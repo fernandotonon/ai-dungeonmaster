@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    volumes:
+      - ./ai-engine:/app
+      - pip-cache:/root/.cache/pip
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "5000:5000"
+
+  game-server:
+    build:
+      context: ./game-server
+      dockerfile: Dockerfile
+    volumes:
+      - ./game-server:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - ai-engine
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "80:80"
+    depends_on:
+      - game-server
+
+volumes:
+  pip-cache:
+    driver: local
+
+networks:
+  default:
+    name: ai-dungeonmaster-network

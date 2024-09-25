@@ -2,23 +2,43 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function App() {
+  const [gameState, setGameState] = useState(null);
+  const [savedGames, setSavedGames] = useState([]);
+  const [isCreatingNewGame, setIsCreatingNewGame] = useState(false);
+  const [newGameTitle, setNewGameTitle] = useState('');
   const [playerRole, setPlayerRole] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [action, setAction] = useState('');
-  const [gameState, setGameState] = useState(null);
   const [aiModels, setAiModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState('gpt3');
+  const [selectedModel, setSelectedModel] = useState('gpt4o-mini');
   const [error, setError] = useState(null);
 
+  const modelDescriptions = {
+    'gpt4o': 'GPT-4o - Most advanced, best for complex scenarios',
+    'gpt4o-mini': 'GPT-4o Mini - Powerful and efficient, good balance for RPG',
+    'gpt4-turbo': 'GPT-4 Turbo - High performance, great for detailed narratives',
+    'gpt4': 'GPT-4 - Very capable, excellent for rich storytelling',
+    'gpt35-turbo': 'GPT-3.5 Turbo - Fast and capable, good for most RPG scenarios'
+  };
+
   useEffect(() => {
-    fetchGameState();
+    fetchSavedGames();
     fetchAiModels();
   }, []);
+
+  const fetchSavedGames = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/saved-games');
+      setSavedGames(response.data);
+    } catch (error) {
+      console.error('Error fetching saved games:', error);
+      setError('Failed to fetch saved games');
+    }
+  };
 
   const fetchAiModels = async () => {
     try {
       const response = await axios.get('http://localhost:3000/ai-models');
-      console.log('AI Models:', response.data);
       setAiModels(response.data.models);
     } catch (error) {
       console.error('Error fetching AI models:', error);
@@ -26,29 +46,38 @@ function App() {
     }
   };
 
-  const initGame = async (role) => {
+  const initNewGame = async () => {
     try {
-      console.log(`Initializing game with role: ${role} and model: ${selectedModel}`);
       const response = await axios.post('http://localhost:3000/init-game', { 
-        playerRole: role,
-        aiModel: selectedModel
+        playerRole,
+        aiModel: selectedModel,
+        title: newGameTitle
       });
-      console.log('Game initialized:', response.data);
       setGameState(response.data.gameState);
-      setPlayerRole(role);
-      setError(null);
+      setIsCreatingNewGame(false);
+      setNewGameTitle('');
     } catch (error) {
       console.error('Error initializing game:', error);
       setError('Failed to initialize game');
     }
   };
 
+  const loadGame = async (gameId) => {
+    try {
+      const response = await axios.get(`http://localhost:3000/load-game/${gameId}`);
+      setGameState(response.data.gameState);
+      setPlayerRole(response.data.gameState.playerRole);
+    } catch (error) {
+      console.error('Error loading game:', error);
+      setError('Failed to load game');
+    }
+  };
+
   const addPlayer = async () => {
     try {
       const response = await axios.post('http://localhost:3000/add-player', { playerName });
-      console.log('Player added:', response.data);
       setPlayerName('');
-      fetchGameState();
+      setGameState(response.data.gameState);
     } catch (error) {
       console.error('Error adding player:', error);
       setError('Failed to add player');
@@ -61,7 +90,6 @@ function App() {
         action, 
         sender: playerRole === 'DM' ? 'DM' : 'Player'
       });
-      console.log('Action submitted:', response.data);
       setGameState(response.data.gameState);
       setAction('');
     } catch (error) {
@@ -70,25 +98,128 @@ function App() {
     }
   };
 
-  const fetchGameState = async () => {
+  const saveGame = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/game-state');
-      console.log('Fetched game state:', response.data);
-      setGameState(response.data);
+      const response = await axios.post('http://localhost:3000/save-game');
+      console.log('Game saved:', response.data);
+      fetchSavedGames();
     } catch (error) {
-      console.error('Error fetching game state:', error);
-      setError('Failed to fetch game state');
+      console.error('Error saving game:', error);
+      setError('Failed to save game');
     }
   };
 
+  const renderInitialScreen = () => (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Welcome to AI DungeonMaster</h2>
+      <button 
+        onClick={() => setIsCreatingNewGame(true)} 
+        className="bg-green-500 text-white px-4 py-2 rounded mr-2"
+      >
+        Create New Story
+      </button>
+      <h3 className="text-xl font-bold mt-6 mb-2">Saved Games:</h3>
+      {savedGames.length > 0 ? (
+        <ul className="list-disc pl-5">
+          {savedGames.map((game) => (
+            <li key={game._id} className="mb-2">
+              <button 
+                onClick={() => loadGame(game._id)}
+                className="text-blue-500 hover:underline"
+              >
+                {game.title || 'Untitled'} - {new Date(game.createdAt).toLocaleString()}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No saved games available.</p>
+      )}
+    </div>
+  );
 
-  const modelDescriptions = {
-    'gpt4o': 'GPT-4o - Most advanced, best for complex scenarios',
-    'gpt4o-mini': 'GPT-4o Mini - Powerful and efficient, good balance for RPG',
-    'gpt4-turbo': 'GPT-4 Turbo - High performance, great for detailed narratives',
-    'gpt4': 'GPT-4 - Very capable, excellent for rich storytelling',
-    'gpt35-turbo': 'GPT-3.5 Turbo - Fast and capable, good for most RPG scenarios'
-  };
+  const renderNewGameSetup = () => (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Create New Story</h2>
+      <input 
+        type="text"
+        value={newGameTitle}
+        onChange={(e) => setNewGameTitle(e.target.value)}
+        placeholder="Enter story title"
+        className="border p-2 mr-2 rounded w-full mb-4"
+      />
+      <h3 className="text-xl mb-2">Choose your role and AI model:</h3>
+      <select 
+        value={selectedModel} 
+        onChange={(e) => setSelectedModel(e.target.value)}
+        className="p-2 border rounded mr-2 w-full mb-2"
+      >
+        {Object.entries(modelDescriptions).map(([model, description]) => (
+          <option key={model} value={model}>{model.toUpperCase()} - {description}</option>
+        ))}
+      </select>
+      <div className="mt-4">
+        <button className="bg-blue-500 text-white px-4 py-2 mr-2 rounded" onClick={() => setPlayerRole('DM')}>Dungeon Master</button>
+        <button className="bg-green-500 text-white px-4 py-2 rounded" onClick={() => setPlayerRole('Player')}>Player</button>
+      </div>
+      {playerRole && (
+        <button 
+          onClick={initNewGame} 
+          className="bg-red-500 text-white px-4 py-2 rounded mt-4"
+        >
+          Start New Game
+        </button>
+      )}
+    </div>
+  );
+
+  const renderGameInterface = () => (
+    <div>
+      <h2 className="text-2xl font-bold mb-4">{gameState.title || 'Untitled Story'}</h2>
+      <div className="mb-6">
+        <p>Your Role: {gameState.playerRole}</p>
+        <p>AI Role: {gameState.aiRole}</p>
+        <p>AI Model: {gameState.aiModel}</p>
+        <p>Players: {gameState.players.join(', ')}</p>
+      </div>
+
+      {gameState.playerRole === 'DM' && (
+        <div className="mb-6">
+          <input 
+            type="text" 
+            value={playerName} 
+            onChange={(e) => setPlayerName(e.target.value)} 
+            placeholder="Enter player name" 
+            className="border p-2 mr-2 rounded"
+          />
+          <button onClick={addPlayer} className="bg-purple-500 text-white px-4 py-2 rounded">Add Player</button>
+        </div>
+      )}
+
+      <div className="mb-6">
+        <textarea
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          placeholder="Enter your action or narrative..."
+          className="w-full h-32 p-2 border mb-2 rounded"
+        />
+        <button onClick={submitAction} className="bg-red-500 text-white px-4 py-2 rounded">Submit Action</button>
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-xl mb-2">Story:</h3>
+        <div className="border rounded p-4 bg-gray-100 max-h-96 overflow-y-auto">
+          {gameState.storyMessages.map((message, index) => (
+            <div key={index} className={`mb-4 ${message.sender === gameState.aiRole ? 'text-blue-600' : 'text-green-600'}`}>
+              <strong>{message.sender}:</strong> {message.content}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={saveGame} className="bg-yellow-500 text-white px-4 py-2 rounded mt-4">Save Game</button>
+    </div>
+  );
 
   return (
     <div className="App p-4 max-w-3xl mx-auto">
@@ -96,68 +227,9 @@ function App() {
       
       {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
 
-      {!playerRole && (
-        <div className="mb-6">
-          <h2 className="text-xl mb-2">Choose your role and AI model:</h2>
-          <select 
-            value={selectedModel} 
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="p-2 border rounded mr-2 w-full mb-2"
-          >
-            {Object.entries(modelDescriptions).map(([model, description]) => (
-              <option key={model} value={model}>{model.toUpperCase()} - {description}</option>
-            ))}
-          </select>
-          <button className="bg-blue-500 text-white px-4 py-2 mr-2 rounded" onClick={() => initGame('DM')}>Dungeon Master</button>
-          <button className="bg-green-500 text-white px-4 py-2 rounded" onClick={() => initGame('Player')}>Player</button>
-        </div>
-      )}
-
-      {playerRole && gameState && (
-        <>
-          <div className="mb-6">
-            <h2 className="text-xl mb-2">Game State:</h2>
-            <p>Your Role: {gameState.playerRole}</p>
-            <p>AI Role: {gameState.aiRole}</p>
-            <p>AI Model: {gameState.aiModel}</p>
-            <p>Players: {gameState.players.join(', ')}</p>
-          </div>
-
-          {playerRole === 'DM' && (
-            <div className="mb-6">
-              <input 
-                type="text" 
-                value={playerName} 
-                onChange={(e) => setPlayerName(e.target.value)} 
-                placeholder="Enter player name" 
-                className="border p-2 mr-2 rounded"
-              />
-              <button onClick={addPlayer} className="bg-purple-500 text-white px-4 py-2 rounded">Add Player</button>
-            </div>
-          )}
-
-          <div className="mb-6">
-            <textarea
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
-              placeholder="Enter your action or narrative..."
-              className="w-full h-32 p-2 border mb-2 rounded"
-            />
-            <button onClick={submitAction} className="bg-red-500 text-white px-4 py-2 rounded">Submit Action</button>
-          </div>
-
-          <div className="mt-6">
-            <h2 className="text-2xl mb-4">Story:</h2>
-            <div className="border rounded p-4 bg-gray-100 max-h-96 overflow-y-auto">
-              {gameState.storyMessages.map((message, index) => (
-                <div key={index} className={`mb-4 ${message.sender === gameState.aiRole ? 'text-blue-600' : 'text-green-600'}`}>
-                  <strong>{message.sender}:</strong> {message.content}
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      {!gameState && !isCreatingNewGame && renderInitialScreen()}
+      {!gameState && isCreatingNewGame && renderNewGameSetup()}
+      {gameState && renderGameInterface()}
     </div>
   );
 }

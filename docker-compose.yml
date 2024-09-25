@@ -24,8 +24,10 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/rpg_game
     depends_on:
       - ai-engine
+      - mongodb      
 
   frontend:
     build:
@@ -42,9 +44,17 @@ services:
     depends_on:
       - game-server
 
+  mongodb:
+    image: mongo:4.4.18
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+
 volumes:
   pip-cache:
     driver: local
+  mongodb_data:
 
 networks:
   default:

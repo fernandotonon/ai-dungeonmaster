@@ -15,7 +15,8 @@ function App() {
   const [audioPlayer] = useState(new Audio());
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-
+  const [imagePrompts, setImagePrompts] = useState({});
+  
   const modelDescriptions = {
     'gpt4o': 'GPT-4o - Most advanced, best for complex scenarios',
     'gpt4o-mini': 'GPT-4o Mini - Powerful and efficient, good balance for RPG',
@@ -194,14 +195,11 @@ function App() {
 
     setIsGeneratingImage(true);
     try {
-      const message = gameState.storyMessages[messageIndex];
-      const response = await axios.post('http://localhost:3000/generate-image', { 
-        prompt: message.content,
-        messageIndex 
-      });
+      const response = await axios.post('http://localhost:3000/generate-image', { messageIndex });
       const updatedGameState = { ...gameState };
       updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
       setGameState(updatedGameState);
+      setImagePrompts({ ...imagePrompts, [messageIndex]: response.data.prompt });
     } catch (error) {
       console.error('Error generating image:', error);
     } finally {
@@ -232,7 +230,7 @@ function App() {
         </div>
       )}
 
-      <div className="mt-6">
+<div className="mt-6">
         <h3 className="text-xl mb-2">Story:</h3>
         <div className="border rounded p-4 bg-gray-100 max-h-96 overflow-y-auto">
           {gameState.storyMessages.map((message, index) => (
@@ -253,7 +251,12 @@ function App() {
                 🖼️
               </button>
               {message.imageFile && (
-                <img src={`http://localhost:3000${message.imageFile}`} alt="Generated scene" className="mt-2 max-w-full h-auto" />
+                <div className="mt-2">
+                  <img src={`http://localhost:3000${message.imageFile}`} alt="Generated scene" className="max-w-full h-auto" />
+                  {imagePrompts[index] && (
+                    <p className="text-sm text-gray-500 mt-1">Prompt: {imagePrompts[index]}</p>
+                  )}
+                </div>
               )}
             </div>
           ))}

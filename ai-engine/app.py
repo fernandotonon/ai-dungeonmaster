@@ -77,18 +77,32 @@ def text_to_speech():
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
     data = request.json
-    prompt = data['prompt']
+    context_prompt = data['contextPrompt']
+    current_message = data['currentMessage']
     
     try:
+        # Generate a detailed image prompt based on the context and current message using gpt4o-mini
+        detailed_prompt = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are an AI that generates detailed image prompts based on story context. Create a vivid, descriptive prompt that captures the scene, including relevant details from the context. Focus on visual elements and maintain continuity with previous events. The prompt should be suitable for DALL-E 2 image generation."},
+                {"role": "user", "content": f"Context:\n{context_prompt}\n\nCurrent action:\n{current_message}\n\nGenerate a detailed image prompt for this scene:"}
+            ],
+            max_tokens=100
+        )
+        
+        image_prompt = detailed_prompt.choices[0].message.content.strip()
+        
+        # Generate the image using the detailed prompt
         response = openai_client.images.generate(
             model="dall-e-2",
-            prompt=prompt,
+            prompt=image_prompt,
             size="256x256",
             response_format="b64_json",
             n=1
         )
         image_data = response.data[0].b64_json
-        return jsonify({'image': image_data})
+        return jsonify({'image': image_data, 'prompt': image_prompt})
     except Exception as e:
         logger.error(f"Error generating image: {str(e)}")
         return jsonify({'error': str(e)}), 500

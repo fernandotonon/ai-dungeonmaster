@@ -195,11 +195,22 @@ app.post('/generate-audio', async (req, res) => {
   }
 });
 
+
 app.post('/generate-image', async (req, res) => {
   try {
-    const { prompt, messageIndex } = req.body;
+    const { messageIndex } = req.body;
     
-    const response = await axios.post('http://ai-engine:5000/generate-image', { prompt });
+    // Get the current message and the previous messages for context
+    const currentMessage = gameState.storyMessages[messageIndex];
+    const contextMessages = gameState.storyMessages.slice(Math.max(0, messageIndex - 3), messageIndex + 1);
+    
+    const contextPrompt = contextMessages.map(msg => `${msg.sender}: ${msg.content}`).join('\n');
+    
+    const response = await axios.post('http://ai-engine:5000/generate-image', { 
+      contextPrompt,
+      currentMessage: currentMessage.content
+    });
+    
     const imageData = response.data.image;
     
     const buffer = Buffer.from(imageData, 'base64');
@@ -208,7 +219,7 @@ app.post('/generate-image', async (req, res) => {
     await minioClient.putObject(imageBucketName, imageFileName, buffer);
     
     const imageUrl = `/image/${imageFileName}`;
-    gameState.storyMessages[messageIndex].imageFile = imageUrl;
+    currentMessage.imageFile = imageUrl;
     await saveGame();
     
     res.json({ imageUrl });

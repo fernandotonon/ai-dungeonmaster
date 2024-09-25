@@ -12,7 +12,9 @@ function App() {
   const [aiModels, setAiModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState('gpt4o-mini');
   const [error, setError] = useState(null);
-
+  const [audioPlayer] = useState(new Audio());
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  
   const modelDescriptions = {
     'gpt4o': 'GPT-4o - Most advanced, best for complex scenarios',
     'gpt4o-mini': 'GPT-4o Mini - Powerful and efficient, good balance for RPG',
@@ -56,6 +58,7 @@ function App() {
       setGameState(response.data.gameState);
       setIsCreatingNewGame(false);
       setNewGameTitle('');
+      fetchSavedGames(); // Refresh the list of saved games
     } catch (error) {
       console.error('Error initializing game:', error);
       setError('Failed to initialize game');
@@ -78,6 +81,7 @@ function App() {
       const response = await axios.post('http://localhost:3000/add-player', { playerName });
       setPlayerName('');
       setGameState(response.data.gameState);
+      fetchSavedGames(); // Refresh the list of saved games
     } catch (error) {
       console.error('Error adding player:', error);
       setError('Failed to add player');
@@ -92,20 +96,10 @@ function App() {
       });
       setGameState(response.data.gameState);
       setAction('');
+      fetchSavedGames(); // Refresh the list of saved games
     } catch (error) {
       console.error('Error submitting action:', error);
       setError('Failed to submit action');
-    }
-  };
-
-  const saveGame = async () => {
-    try {
-      const response = await axios.post('http://localhost:3000/save-game');
-      console.log('Game saved:', response.data);
-      fetchSavedGames();
-    } catch (error) {
-      console.error('Error saving game:', error);
-      setError('Failed to save game');
     }
   };
 
@@ -127,7 +121,7 @@ function App() {
                 onClick={() => loadGame(game._id)}
                 className="text-blue-500 hover:underline"
               >
-                {game.title || 'Untitled'} - {new Date(game.createdAt).toLocaleString()}
+                {game.title || 'Untitled'} - {new Date(game.updatedAt).toLocaleString()}
               </button>
             </li>
           ))}
@@ -173,6 +167,28 @@ function App() {
     </div>
   );
 
+  const generateAndPlayAudio = async (messageIndex) => {
+    if (isGeneratingAudio) return;
+
+    setIsGeneratingAudio(true);
+    try {
+      const response = await axios.post('http://localhost:3000/generate-audio', { messageIndex });
+      const audioFile = response.data.audioFile;
+      audioPlayer.src = `http://localhost:3000${audioFile}`;
+      audioPlayer.play();
+      
+      // Update the game state with the new audio file
+      const updatedGameState = { ...gameState };
+      updatedGameState.storyMessages[messageIndex].audioFile = audioFile;
+      setGameState(updatedGameState);
+    } catch (error) {
+      console.error('Error generating audio:', error);
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
+
   const renderGameInterface = () => (
     <div>
       <h2 className="text-2xl font-bold mb-4">{gameState.title || 'Untitled Story'}</h2>
@@ -212,12 +228,21 @@ function App() {
           {gameState.storyMessages.map((message, index) => (
             <div key={index} className={`mb-4 ${message.sender === gameState.aiRole ? 'text-blue-600' : 'text-green-600'}`}>
               <strong>{message.sender}:</strong> {message.content}
+              <button
+                onClick={() => generateAndPlayAudio(index)}
+                className={`ml-2 text-gray-500 hover:text-gray-700 ${isGeneratingAudio ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isGeneratingAudio}
+              >
+                🔊
+              </button>
             </div>
           ))}
         </div>
       </div>
 
-      <button onClick={saveGame} className="bg-yellow-500 text-white px-4 py-2 rounded mt-4">Save Game</button>
+      <button onClick={() => { setGameState(null); fetchSavedGames(); }} className="bg-yellow-500 text-white px-4 py-2 rounded mt-4">
+        Back to Main Menu
+      </button>
     </div>
   );
 

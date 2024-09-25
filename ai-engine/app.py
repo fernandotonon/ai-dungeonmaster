@@ -1,8 +1,9 @@
 import os
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from openai import OpenAI
+import tempfile
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,7 +24,6 @@ MODEL_MAPPING = {
 def generate_response(prompt, model):
     try:
         openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
-        
         response = openai_client.chat.completions.create(
             model=openai_model,
             messages=[
@@ -48,12 +48,29 @@ def generate_text():
         logger.info(f"Generating text with model: {model}")
         if model in MODEL_MAPPING:
             generated_text = generate_response(prompt, model)
+            return jsonify({'generated_text': generated_text})
         else:
             return jsonify({'error': 'Invalid model specified'}), 400
-        
-        return jsonify({'generated_text': generated_text})
     except Exception as e:
         logger.error(f"Error in generate_text: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/tts', methods=['POST'])
+def text_to_speech():
+    data = request.json
+    text = data['text']
+    
+    try:
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        response = openai_client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=text
+        )
+        response.stream_to_file(temp_file.name)
+        return send_file(temp_file.name, mimetype="audio/mpeg")
+    except Exception as e:
+        logger.error(f"Error in text_to_speech: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/models', methods=['GET'])

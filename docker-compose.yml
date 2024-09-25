@@ -8,7 +8,6 @@ services:
     volumes:
       - ./ai-engine:/app
       - pip-cache:/root/.cache/pip
-      - ai-engine-temp:/tmp
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     ports:
@@ -21,15 +20,20 @@ services:
     volumes:
       - ./game-server:/app
       - /app/node_modules
-      - ./game-server/audio_files:/app/audio_files
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
       - MONGODB_URI=mongodb://mongodb:27017/rpg_game
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET_NAME=audio-files
     depends_on:
       - ai-engine
       - mongodb      
+      - minio
 
   frontend:
     build:
@@ -53,11 +57,23 @@ services:
     ports:
       - "27017:27017"
 
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+
 volumes:
   pip-cache:
     driver: local
   mongodb_data:
-  ai-engine-temp:
+  minio_data:
 
 networks:
   default:

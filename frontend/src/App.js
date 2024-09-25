@@ -14,7 +14,7 @@ function App() {
   const [error, setError] = useState(null);
   const [audioPlayer] = useState(new Audio());
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  
+
   const modelDescriptions = {
     'gpt4o': 'GPT-4o - Most advanced, best for complex scenarios',
     'gpt4o-mini': 'GPT-4o Mini - Powerful and efficient, good balance for RPG',
@@ -92,11 +92,10 @@ function App() {
     try {
       const response = await axios.post('http://localhost:3000/story', { 
         action, 
-        sender: playerRole === 'DM' ? 'DM' : 'Player'
+        sender: playerRole
       });
       setGameState(response.data.gameState);
       setAction('');
-      fetchSavedGames(); // Refresh the list of saved games
     } catch (error) {
       console.error('Error submitting action:', error);
       setError('Failed to submit action');
@@ -174,7 +173,8 @@ function App() {
     try {
       const response = await axios.post('http://localhost:3000/generate-audio', { messageIndex });
       const audioFile = response.data.audioFile;
-      audioPlayer.src = `http://localhost:3000${audioFile}`;
+      const audioUrl = `http://localhost:3000/audio/${audioFile.split('/').pop()}`;
+      audioPlayer.src = audioUrl;
       audioPlayer.play();
       
       // Update the game state with the new audio file
@@ -187,7 +187,6 @@ function App() {
       setIsGeneratingAudio(false);
     }
   };
-
 
   const renderGameInterface = () => (
     <div>
@@ -212,16 +211,6 @@ function App() {
         </div>
       )}
 
-      <div className="mb-6">
-        <textarea
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          placeholder="Enter your action or narrative..."
-          className="w-full h-32 p-2 border mb-2 rounded"
-        />
-        <button onClick={submitAction} className="bg-red-500 text-white px-4 py-2 rounded">Submit Action</button>
-      </div>
-
       <div className="mt-6">
         <h3 className="text-xl mb-2">Story:</h3>
         <div className="border rounded p-4 bg-gray-100 max-h-96 overflow-y-auto">
@@ -238,6 +227,16 @@ function App() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="mb-6">
+        <textarea
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          placeholder="Enter your action or narrative..."
+          className="w-full h-32 p-2 border mb-2 rounded"
+        />
+        <button onClick={submitAction} className="bg-red-500 text-white px-4 py-2 rounded">Submit Action</button>
       </div>
 
       <button onClick={() => { setGameState(null); fetchSavedGames(); }} className="bg-yellow-500 text-white px-4 py-2 rounded mt-4">

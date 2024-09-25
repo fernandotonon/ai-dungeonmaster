@@ -2,15 +2,14 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const fs = require('fs').promises;
-const path = require('path');
+const Minio = require('minio');
+const { Readable } = require('stream');
 
 const app = express();
 const port = 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use('/audio', express.static('audio_files'));
 
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 const db = mongoose.connection;
@@ -18,6 +17,31 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 db.once('open', function() {
   console.log('Connected to MongoDB');
 });
+
+const minioClient = new Minio.Client({
+  endPoint: process.env.MINIO_ENDPOINT,
+  port: parseInt(process.env.MINIO_PORT),
+  useSSL: false,
+  accessKey: process.env.MINIO_ACCESS_KEY,
+  secretKey: process.env.MINIO_SECRET_KEY
+});
+
+const bucketName = process.env.MINIO_BUCKET_NAME;
+
+// Ensure the bucket exists
+(async () => {
+  try {
+    const bucketExists = await minioClient.bucketExists(bucketName);
+    if (!bucketExists) {
+      await minioClient.makeBucket(bucketName);
+      console.log(`Bucket ${bucketName} created.`);
+    } else {
+      console.log(`Bucket ${bucketName} already exists.`);
+    }
+  } catch (err) {
+    console.error('Error setting up MinIO bucket:', err);
+  }
+})();
 
 const GameSchema = new mongoose.Schema({
   title: String,
@@ -77,13 +101,19 @@ app.post('/add-player', async (req, res) => {
   res.json({ message: "Player added", gameState });
 });
 
+function cleanPrefix(text) {
+  return text.replace(/^(Player:|DM:)\s*/i, '');
+}
+
 app.post('/story', async (req, res) => {
   try {
     const { action, sender } = req.body;
     
+    const cleanedAction = cleanPrefix(action);
+    
     gameState.storyMessages.push({ 
       sender, 
-      content: action, 
+      content: cleanedAction, 
       audioFile: null 
     });
     
@@ -95,7 +125,7 @@ app.post('/story', async (req, res) => {
       model: gameState.aiModel
     });
     
-    let aiGeneratedText = aiResponse.data.generated_text;
+    let aiGeneratedText = cleanPrefix(aiResponse.data.generated_text);
     
     gameState.storyMessages.push({ 
       sender: gameState.aiRole, 
@@ -112,31 +142,86 @@ app.post('/story', async (req, res) => {
   }
 });
 
+async function generateAndStoreAudio(text, filename) {
+  try {
+    const response = await axios.post('http://ai-engine:5000/tts', 
+      { text },
+      { responseType: 'arraybuffer' }
+    );
+    
+    const buffer = Buffer.from(response.data);
+    await minioClient.putObject(bucketName, filename, buffer);
+    
+    return `/${bucketName}/${filename}`;
+  } catch (error) {
+    console.error('Error generating and storing audio:', error);
+    throw error;
+  }
+}
+
 app.post('/generate-audio', async (req, res) => {
   try {
     const { messageIndex } = req.body;
     const message = gameState.storyMessages[messageIndex];
     
     if (message.audioFile) {
-      return res.json({ audioFile: message.audioFile });
+      // Check if the file exists in MinIO
+      try {
+        await minioClient.statObject(bucketName, message.audioFile.split('/').pop());
+        return res.json({ audioFile: message.audioFile });
+      } catch (err) {
+        if (err.code === 'NotFound') {
+          console.log('Audio file not found in MinIO, regenerating...');
+          // File doesn't exist, we'll regenerate it
+        } else {
+          throw err;
+        }
+      }
     }
     
-    const response = await axios.post('http://ai-engine:5000/tts', 
-      { text: message.content },
-      { responseType: 'arraybuffer' }
-    );
-    
     const audioFileName = `audio_${Date.now()}.mp3`;
-    const audioFilePath = path.join(__dirname, 'audio_files', audioFileName);
-    await fs.writeFile(audioFilePath, response.data);
+    const audioFile = await generateAndStoreAudio(message.content, audioFileName);
     
-    message.audioFile = `/audio/${audioFileName}`;
+    message.audioFile = audioFile;
     await saveGame();
     
     res.json({ audioFile: message.audioFile });
   } catch (error) {
     console.error('Error generating audio:', error);
     res.status(500).json({ error: 'An error occurred while generating audio' });
+  }
+});
+
+app.get('/audio/:filename', async (req, res) => {
+  try {
+    const objectName = req.params.filename;
+    let stream;
+
+    try {
+      stream = await minioClient.getObject(bucketName, objectName);
+    } catch (err) {
+      if (err.code === 'NotFound') {
+        console.log('Audio file not found in MinIO, regenerating...');
+        // Find the corresponding message and regenerate the audio
+        const message = gameState.storyMessages.find(msg => msg.audioFile && msg.audioFile.includes(objectName));
+        if (message) {
+          const newAudioFile = await generateAndStoreAudio(message.content, objectName);
+          message.audioFile = newAudioFile;
+          await saveGame();
+          stream = await minioClient.getObject(bucketName, objectName);
+        } else {
+          throw new Error('Message not found for the requested audio');
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    stream.pipe(res);
+  } catch (error) {
+    console.error('Error retrieving audio file:', error);
+    res.status(404).send('Audio file not found');
   }
 });
 

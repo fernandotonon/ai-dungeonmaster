@@ -14,6 +14,7 @@ function App() {
   const [error, setError] = useState(null);
   const [audioPlayer] = useState(new Audio());
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const modelDescriptions = {
     'gpt4o': 'GPT-4o - Most advanced, best for complex scenarios',
@@ -188,6 +189,26 @@ function App() {
     }
   };
 
+  const generateImage = async (messageIndex) => {
+    if (isGeneratingImage) return;
+
+    setIsGeneratingImage(true);
+    try {
+      const message = gameState.storyMessages[messageIndex];
+      const response = await axios.post('http://localhost:3000/generate-image', { 
+        prompt: message.content,
+        messageIndex 
+      });
+      const updatedGameState = { ...gameState };
+      updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
+      setGameState(updatedGameState);
+    } catch (error) {
+      console.error('Error generating image:', error);
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
   const renderGameInterface = () => (
     <div>
       <h2 className="text-2xl font-bold mb-4">{gameState.title || 'Untitled Story'}</h2>
@@ -224,6 +245,16 @@ function App() {
               >
                 🔊
               </button>
+              <button
+                onClick={() => generateImage(index)}
+                className={`ml-2 text-gray-500 hover:text-gray-700 ${isGeneratingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isGeneratingImage}
+              >
+                🖼️
+              </button>
+              {message.imageFile && (
+                <img src={`http://localhost:3000${message.imageFile}`} alt="Generated scene" className="mt-2 max-w-full h-auto" />
+              )}
             </div>
           ))}
         </div>

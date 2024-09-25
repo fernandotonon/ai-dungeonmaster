@@ -1,5 +1,6 @@
 import os
 import logging
+import base64
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from openai import OpenAI
@@ -71,6 +72,25 @@ def text_to_speech():
         return send_file(temp_file.name, mimetype="audio/mpeg")
     except Exception as e:
         logger.error(f"Error in text_to_speech: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate-image', methods=['POST'])
+def generate_image():
+    data = request.json
+    prompt = data['prompt']
+    
+    try:
+        response = openai_client.images.generate(
+            model="dall-e-2",
+            prompt=prompt,
+            size="256x256",
+            response_format="b64_json",
+            n=1
+        )
+        image_data = response.data[0].b64_json
+        return jsonify({'image': image_data})
+    except Exception as e:
+        logger.error(f"Error generating image: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/models', methods=['GET'])

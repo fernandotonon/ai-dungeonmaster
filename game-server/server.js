@@ -3,7 +3,6 @@ const axios = require('axios');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const Minio = require('minio');
-const { Readable } = require('stream');
 
 const app = express();
 const port = 3000;
@@ -26,20 +25,23 @@ const minioClient = new Minio.Client({
   secretKey: process.env.MINIO_SECRET_KEY
 });
 
-const bucketName = process.env.MINIO_BUCKET_NAME;
+const audioBucketName = process.env.MINIO_AUDIO_BUCKET_NAME || 'audio-files';
+const imageBucketName = process.env.MINIO_IMAGE_BUCKET_NAME || 'image-files';
 
-// Ensure the bucket exists
+// Ensure both buckets exist
 (async () => {
   try {
-    const bucketExists = await minioClient.bucketExists(bucketName);
-    if (!bucketExists) {
-      await minioClient.makeBucket(bucketName);
-      console.log(`Bucket ${bucketName} created.`);
-    } else {
-      console.log(`Bucket ${bucketName} already exists.`);
+    for (const bucketName of [audioBucketName, imageBucketName]) {
+      const bucketExists = await minioClient.bucketExists(bucketName);
+      if (!bucketExists) {
+        await minioClient.makeBucket(bucketName);
+        console.log(`Bucket ${bucketName} created.`);
+      } else {
+        console.log(`Bucket ${bucketName} already exists.`);
+      }
     }
   } catch (err) {
-    console.error('Error setting up MinIO bucket:', err);
+    console.error('Error setting up MinIO buckets:', err);
   }
 })();
 
@@ -50,7 +52,8 @@ const GameSchema = new mongoose.Schema({
   storyMessages: [{
     sender: String,
     content: String,
-    audioFile: String
+    audioFile: String,
+    imageFile: String
   }],
   players: [String],
   aiModel: String,
@@ -150,9 +153,9 @@ async function generateAndStoreAudio(text, filename) {
     );
     
     const buffer = Buffer.from(response.data);
-    await minioClient.putObject(bucketName, filename, buffer);
+    await minioClient.putObject(audioBucketName, filename, buffer);
     
-    return `/${bucketName}/${filename}`;
+    return `/audio/${filename}`;
   } catch (error) {
     console.error('Error generating and storing audio:', error);
     throw error;
@@ -167,7 +170,7 @@ app.post('/generate-audio', async (req, res) => {
     if (message.audioFile) {
       // Check if the file exists in MinIO
       try {
-        await minioClient.statObject(bucketName, message.audioFile.split('/').pop());
+        await minioClient.statObject(audioBucketName, message.audioFile.split('/').pop());
         return res.json({ audioFile: message.audioFile });
       } catch (err) {
         if (err.code === 'NotFound') {
@@ -192,36 +195,52 @@ app.post('/generate-audio', async (req, res) => {
   }
 });
 
+app.post('/generate-image', async (req, res) => {
+  try {
+    const { prompt, messageIndex } = req.body;
+    
+    const response = await axios.post('http://ai-engine:5000/generate-image', { prompt });
+    const imageData = response.data.image;
+    
+    const buffer = Buffer.from(imageData, 'base64');
+    const imageFileName = `image_${Date.now()}.png`;
+    
+    await minioClient.putObject(imageBucketName, imageFileName, buffer);
+    
+    const imageUrl = `/image/${imageFileName}`;
+    gameState.storyMessages[messageIndex].imageFile = imageUrl;
+    await saveGame();
+    
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error('Error generating image:', error);
+    res.status(500).json({ error: 'An error occurred while generating the image' });
+  }
+});
+
 app.get('/audio/:filename', async (req, res) => {
   try {
     const objectName = req.params.filename;
-    let stream;
-
-    try {
-      stream = await minioClient.getObject(bucketName, objectName);
-    } catch (err) {
-      if (err.code === 'NotFound') {
-        console.log('Audio file not found in MinIO, regenerating...');
-        // Find the corresponding message and regenerate the audio
-        const message = gameState.storyMessages.find(msg => msg.audioFile && msg.audioFile.includes(objectName));
-        if (message) {
-          const newAudioFile = await generateAndStoreAudio(message.content, objectName);
-          message.audioFile = newAudioFile;
-          await saveGame();
-          stream = await minioClient.getObject(bucketName, objectName);
-        } else {
-          throw new Error('Message not found for the requested audio');
-        }
-      } else {
-        throw err;
-      }
-    }
-
+    const stream = await minioClient.getObject(audioBucketName, objectName);
+    
     res.setHeader('Content-Type', 'audio/mpeg');
     stream.pipe(res);
   } catch (error) {
     console.error('Error retrieving audio file:', error);
     res.status(404).send('Audio file not found');
+  }
+});
+
+app.get('/image/:filename', async (req, res) => {
+  try {
+    const objectName = req.params.filename;
+    const stream = await minioClient.getObject(imageBucketName, objectName);
+    
+    res.setHeader('Content-Type', 'image/png');
+    stream.pipe(res);
+  } catch (error) {
+    console.error('Error retrieving image file:', error);
+    res.status(404).send('Image file not found');
   }
 });
 

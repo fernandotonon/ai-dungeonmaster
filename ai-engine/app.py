@@ -1,6 +1,5 @@
 import os
 import logging
-import base64
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from openai import OpenAI
@@ -22,71 +21,22 @@ MODEL_MAPPING = {
     'gpt35-turbo': 'gpt-3.5-turbo'
 }
 
-def generate_response(prompt, model):
-    try:
-        openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
-        response = openai_client.chat.completions.create(
-            model=openai_model,
-            messages=[
-                {"role": "system", "content": "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. Respond appropriately based on the role specified in the prompt. Keep your responses concise and relevant to the game context."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=500,
-            temperature=0.7
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        logger.error(f"Error generating {model} response: {str(e)}")
-        raise
-
-@app.route('/generate', methods=['POST'])
-def generate_text():
-    data = request.json
-    prompt = data['prompt']
-    model = data.get('model', 'gpt4o-mini')  # Default to GPT-4o-mini if not specified
-    
-    try:
-        logger.info(f"Generating text with model: {model}")
-        if model in MODEL_MAPPING:
-            generated_text = generate_response(prompt, model)
-            return jsonify({'generated_text': generated_text})
-        else:
-            return jsonify({'error': 'Invalid model specified'}), 400
-    except Exception as e:
-        logger.error(f"Error in generate_text: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/tts', methods=['POST'])
-def text_to_speech():
-    data = request.json
-    text = data['text']
-    
-    try:
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        response = openai_client.audio.speech.create(
-            model="tts-1",
-            voice="alloy",
-            input=text
-        )
-        response.stream_to_file(temp_file.name)
-        return send_file(temp_file.name, mimetype="audio/mpeg")
-    except Exception as e:
-        logger.error(f"Error in text_to_speech: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+AVAILABLE_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
     data = request.json
     context_prompt = data['contextPrompt']
     current_message = data['currentMessage']
+    style = data.get('style', 'realistic')  # Default to 'realistic' if not provided
     
     try:
         # Generate a detailed image prompt based on the context and current message using gpt4o-mini
         detailed_prompt = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are an AI that generates detailed image prompts based on story context. Create a vivid, descriptive prompt that captures the scene, including relevant details from the context. Focus on visual elements and maintain continuity with previous events. The prompt should be suitable for DALL-E 2 image generation."},
-                {"role": "user", "content": f"Context:\n{context_prompt}\n\nCurrent action:\n{current_message}\n\nGenerate a detailed image prompt for this scene:"}
+                {"role": "system", "content": f"You are an AI that generates detailed image prompts based on story context. Create a vivid, descriptive prompt that captures the scene, including relevant details from the context. Focus on visual elements and maintain continuity with previous events. The prompt should be suitable for DALL-E 2 image generation. Apply a {style} art style to the image."},
+                {"role": "user", "content": f"Context:\n{context_prompt}\n\nCurrent action:\n{current_message}\n\nGenerate a detailed image prompt for this scene in {style} style:"}
             ],
             max_tokens=100
         )
@@ -106,6 +56,32 @@ def generate_image():
     except Exception as e:
         logger.error(f"Error generating image: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/tts', methods=['POST'])
+def text_to_speech():
+    data = request.json
+    text = data['text']
+    voice = data.get('voice', 'alloy')  # Default to 'alloy' if not provided
+    
+    if voice not in AVAILABLE_VOICES:
+        return jsonify({'error': 'Invalid voice selected'}), 400
+    
+    try:
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        response = openai_client.audio.speech.create(
+            model="tts-1",
+            voice=voice,
+            input=text
+        )
+        response.stream_to_file(temp_file.name)
+        return send_file(temp_file.name, mimetype="audio/mpeg")
+    except Exception as e:
+        logger.error(f"Error in text_to_speech: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/available-voices', methods=['GET'])
+def get_available_voices():
+    return jsonify({'voices': AVAILABLE_VOICES})
 
 @app.route('/models', methods=['GET'])
 def get_models():

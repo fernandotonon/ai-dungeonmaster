@@ -3,42 +3,30 @@ import axios from 'axios';
 
 function App() {
   const [gameState, setGameState] = useState(null);
-  const [savedGames, setSavedGames] = useState([]);
-  const [isCreatingNewGame, setIsCreatingNewGame] = useState(false);
-  const [newGameTitle, setNewGameTitle] = useState('');
-  const [playerRole, setPlayerRole] = useState('');
-  const [playerName, setPlayerName] = useState('');
-  const [action, setAction] = useState('');
   const [aiModels, setAiModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState('gpt4o-mini');
   const [error, setError] = useState(null);
   const [audioPlayer] = useState(new Audio());
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imagePrompts, setImagePrompts] = useState({});
-  
-  const modelDescriptions = {
-    'gpt4o': 'GPT-4o - Most advanced, best for complex scenarios',
-    'gpt4o-mini': 'GPT-4o Mini - Powerful and efficient, good balance for RPG',
-    'gpt4-turbo': 'GPT-4 Turbo - High performance, great for detailed narratives',
-    'gpt4': 'GPT-4 - Very capable, excellent for rich storytelling',
-    'gpt35-turbo': 'GPT-3.5 Turbo - Fast and capable, good for most RPG scenarios'
-  };
+  const [imageStyle, setImageStyle] = useState('hand-drawn');
+  const [selectedVoice, setSelectedVoice] = useState('onyx');
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [savedGames, setSavedGames] = useState([]);
+  const [playerName, setPlayerName] = useState('');
+  const [action, setAction] = useState('');
+
+  const imageStyles = [
+    'realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
+    'fantasy illustration', 'oil painting', 'watercolor'
+  ];
 
   useEffect(() => {
-    fetchSavedGames();
     fetchAiModels();
+    fetchAvailableVoices();
+    fetchSavedGames();
   }, []);
 
-  const fetchSavedGames = async () => {
-    try {
-      const response = await axios.get('http://localhost:3000/saved-games');
-      setSavedGames(response.data);
-    } catch (error) {
-      console.error('Error fetching saved games:', error);
-      setError('Failed to fetch saved games');
-    }
-  };
 
   const fetchAiModels = async () => {
     try {
@@ -50,17 +38,35 @@ function App() {
     }
   };
 
-  const initNewGame = async () => {
+  const fetchAvailableVoices = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/available-voices');
+      setAvailableVoices(response.data.voices);
+    } catch (error) {
+      console.error('Error fetching available voices:', error);
+    }
+  };
+
+  const fetchSavedGames = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/saved-games');
+      setSavedGames(response.data);
+    } catch (error) {
+      console.error('Error fetching saved games:', error);
+      setError('Failed to fetch saved games');
+    }
+  };
+
+  const initGame = async (role) => {
     try {
       const response = await axios.post('http://localhost:3000/init-game', { 
-        playerRole,
+        playerRole: role,
         aiModel: selectedModel,
-        title: newGameTitle
+        imageStyle,
+        voice: selectedVoice
       });
       setGameState(response.data.gameState);
-      setIsCreatingNewGame(false);
-      setNewGameTitle('');
-      fetchSavedGames(); // Refresh the list of saved games
+      setError(null);
     } catch (error) {
       console.error('Error initializing game:', error);
       setError('Failed to initialize game');
@@ -71,10 +77,24 @@ function App() {
     try {
       const response = await axios.get(`http://localhost:3000/load-game/${gameId}`);
       setGameState(response.data.gameState);
-      setPlayerRole(response.data.gameState.playerRole);
+      setImageStyle(response.data.gameState.imageStyle || 'hand-drawn');
+      setSelectedVoice(response.data.gameState.voice || 'onyx');
     } catch (error) {
       console.error('Error loading game:', error);
       setError('Failed to load game');
+    }
+  };
+
+  const updatePreferences = async (newImageStyle, newVoice) => {
+    try {
+      const response = await axios.post('http://localhost:3000/update-preferences', {
+        imageStyle: newImageStyle,
+        voice: newVoice
+      });
+      setGameState(response.data.gameState);
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      setError('Failed to update preferences');
     }
   };
 
@@ -83,7 +103,6 @@ function App() {
       const response = await axios.post('http://localhost:3000/add-player', { playerName });
       setPlayerName('');
       setGameState(response.data.gameState);
-      fetchSavedGames(); // Refresh the list of saved games
     } catch (error) {
       console.error('Error adding player:', error);
       setError('Failed to add player');
@@ -94,7 +113,7 @@ function App() {
     try {
       const response = await axios.post('http://localhost:3000/story', { 
         action, 
-        sender: playerRole
+        sender: gameState.playerRole
       });
       setGameState(response.data.gameState);
       setAction('');
@@ -107,13 +126,22 @@ function App() {
   const renderInitialScreen = () => (
     <div>
       <h2 className="text-2xl font-bold mb-4">Welcome to AI DungeonMaster</h2>
-      <button 
-        onClick={() => setIsCreatingNewGame(true)} 
-        className="bg-green-500 text-white px-4 py-2 rounded mr-2"
-      >
-        Create New Story
-      </button>
-      <h3 className="text-xl font-bold mt-6 mb-2">Saved Games:</h3>
+      <div className="mb-6">
+        <h2 className="text-xl mb-2">Start a new game:</h2>
+        <select 
+          value={selectedModel} 
+          onChange={(e) => setSelectedModel(e.target.value)}
+          className="p-2 border rounded mr-2 w-full mb-2"
+        >
+          {aiModels.map(model => (
+            <option key={model} value={model}>{model.toUpperCase()}</option>
+          ))}
+        </select>
+        <button className="bg-blue-500 text-white px-4 py-2 mr-2 rounded" onClick={() => initGame('DM')}>New Game as Dungeon Master</button>
+        <button className="bg-green-500 text-white px-4 py-2 rounded" onClick={() => initGame('Player')}>New Game as Player</button>
+      </div>
+      
+      <h3 className="text-xl font-bold mt-6 mb-2">Or continue a saved game:</h3>
       {savedGames.length > 0 ? (
         <ul className="list-disc pl-5">
           {savedGames.map((game) => (
@@ -133,53 +161,38 @@ function App() {
     </div>
   );
 
-  const renderNewGameSetup = () => (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Create New Story</h2>
-      <input 
-        type="text"
-        value={newGameTitle}
-        onChange={(e) => setNewGameTitle(e.target.value)}
-        placeholder="Enter story title"
-        className="border p-2 mr-2 rounded w-full mb-4"
-      />
-      <h3 className="text-xl mb-2">Choose your role and AI model:</h3>
-      <select 
-        value={selectedModel} 
-        onChange={(e) => setSelectedModel(e.target.value)}
-        className="p-2 border rounded mr-2 w-full mb-2"
-      >
-        {Object.entries(modelDescriptions).map(([model, description]) => (
-          <option key={model} value={model}>{model.toUpperCase()} - {description}</option>
-        ))}
-      </select>
-      <div className="mt-4">
-        <button className="bg-blue-500 text-white px-4 py-2 mr-2 rounded" onClick={() => setPlayerRole('DM')}>Dungeon Master</button>
-        <button className="bg-green-500 text-white px-4 py-2 rounded" onClick={() => setPlayerRole('Player')}>Player</button>
-      </div>
-      {playerRole && (
-        <button 
-          onClick={initNewGame} 
-          className="bg-red-500 text-white px-4 py-2 rounded mt-4"
-        >
-          Start New Game
-        </button>
-      )}
-    </div>
-  );
+  const generateImage = async (messageIndex) => {
+    if (isGeneratingImage) return;
+
+    setIsGeneratingImage(true);
+    try {
+      const response = await axios.post('http://localhost:3000/generate-image', { 
+        messageIndex,
+        style: imageStyle
+      });
+      const updatedGameState = { ...gameState };
+      updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
+      setGameState(updatedGameState);
+    } catch (error) {
+      console.error('Error generating image:', error);
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
 
   const generateAndPlayAudio = async (messageIndex) => {
     if (isGeneratingAudio) return;
 
     setIsGeneratingAudio(true);
     try {
-      const response = await axios.post('http://localhost:3000/generate-audio', { messageIndex });
+      const response = await axios.post('http://localhost:3000/generate-audio', { 
+        messageIndex,
+        voice: selectedVoice
+      });
       const audioFile = response.data.audioFile;
-      const audioUrl = `http://localhost:3000/audio/${audioFile.split('/').pop()}`;
-      audioPlayer.src = audioUrl;
+      audioPlayer.src = `http://localhost:3000${audioFile}`;
       audioPlayer.play();
       
-      // Update the game state with the new audio file
       const updatedGameState = { ...gameState };
       updatedGameState.storyMessages[messageIndex].audioFile = audioFile;
       setGameState(updatedGameState);
@@ -190,26 +203,42 @@ function App() {
     }
   };
 
-  const generateImage = async (messageIndex) => {
-    if (isGeneratingImage) return;
-
-    setIsGeneratingImage(true);
-    try {
-      const response = await axios.post('http://localhost:3000/generate-image', { messageIndex });
-      const updatedGameState = { ...gameState };
-      updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
-      setGameState(updatedGameState);
-      setImagePrompts({ ...imagePrompts, [messageIndex]: response.data.prompt });
-    } catch (error) {
-      console.error('Error generating image:', error);
-    } finally {
-      setIsGeneratingImage(false);
-    }
-  };
-
   const renderGameInterface = () => (
     <div>
       <h2 className="text-2xl font-bold mb-4">{gameState.title || 'Untitled Story'}</h2>
+      
+      <div className="mb-4">
+        <label className="mr-2">Image Style:</label>
+        <select 
+          value={imageStyle} 
+          onChange={(e) => {
+            const newStyle = e.target.value;
+            setImageStyle(newStyle);
+            updatePreferences(newStyle, selectedVoice);
+          }}
+        >
+          {imageStyles.map(style => (
+            <option key={style} value={style}>{style.charAt(0).toUpperCase() + style.slice(1)}</option>
+          ))}
+        </select>
+      </div>
+      
+      <div className="mb-4">
+        <label className="mr-2">Voice:</label>
+        <select 
+          value={selectedVoice} 
+          onChange={(e) => {
+            const newVoice = e.target.value;
+            setSelectedVoice(newVoice);
+            updatePreferences(imageStyle, newVoice);
+          }}
+        >
+          {availableVoices.map(voice => (
+            <option key={voice} value={voice}>{voice}</option>
+          ))}
+        </select>
+      </div>
+
       <div className="mb-6">
         <p>Your Role: {gameState.playerRole}</p>
         <p>AI Role: {gameState.aiRole}</p>
@@ -230,7 +259,17 @@ function App() {
         </div>
       )}
 
-<div className="mt-6">
+      <div className="mb-6">
+        <textarea
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          placeholder="Enter your action or narrative..."
+          className="w-full h-32 p-2 border mb-2 rounded"
+        />
+        <button onClick={submitAction} className="bg-red-500 text-white px-4 py-2 rounded">Submit Action</button>
+      </div>
+
+      <div className="mt-6">
         <h3 className="text-xl mb-2">Story:</h3>
         <div className="border rounded p-4 bg-gray-100 max-h-96 overflow-y-auto">
           {gameState.storyMessages.map((message, index) => (
@@ -253,29 +292,12 @@ function App() {
               {message.imageFile && (
                 <div className="mt-2">
                   <img src={`http://localhost:3000${message.imageFile}`} alt="Generated scene" className="max-w-full h-auto" />
-                  {imagePrompts[index] && (
-                    <p className="text-sm text-gray-500 mt-1">Prompt: {imagePrompts[index]}</p>
-                  )}
                 </div>
               )}
             </div>
           ))}
         </div>
       </div>
-
-      <div className="mb-6">
-        <textarea
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          placeholder="Enter your action or narrative..."
-          className="w-full h-32 p-2 border mb-2 rounded"
-        />
-        <button onClick={submitAction} className="bg-red-500 text-white px-4 py-2 rounded">Submit Action</button>
-      </div>
-
-      <button onClick={() => { setGameState(null); fetchSavedGames(); }} className="bg-yellow-500 text-white px-4 py-2 rounded mt-4">
-        Back to Main Menu
-      </button>
     </div>
   );
 
@@ -285,8 +307,7 @@ function App() {
       
       {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
 
-      {!gameState && !isCreatingNewGame && renderInitialScreen()}
-      {!gameState && isCreatingNewGame && renderNewGameSetup()}
+      {!gameState && renderInitialScreen()}
       {gameState && renderGameInterface()}
     </div>
   );

@@ -57,6 +57,8 @@ const GameSchema = new mongoose.Schema({
   }],
   players: [String],
   aiModel: String,
+  imageStyle: { type: String, default: 'hand-drawn' },
+  voice: { type: String, default: 'onyx' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -83,18 +85,41 @@ async function saveGame() {
   }
 }
 
+
 app.post('/init-game', async (req, res) => {
-  const { playerRole, aiModel, title } = req.body;
-  gameState = {
-    title,
-    playerRole,
-    aiRole: playerRole === 'DM' ? 'Player' : 'DM',
-    storyMessages: [],
-    players: [],
-    aiModel
-  };
-  await saveGame();
-  res.json({ message: "Game initialized", gameState });
+  try {
+    const { playerRole, aiModel, imageStyle, voice } = req.body;
+    const newGame = new Game({
+      playerRole,
+      aiRole: playerRole === 'DM' ? 'Player' : 'DM',
+      aiModel,
+      imageStyle,
+      voice,
+      storyMessages: [],
+      players: []
+    });
+    await newGame.save();
+    res.json({ message: "Game initialized", gameState: newGame });
+  } catch (error) {
+    console.error('Error initializing game:', error);
+    res.status(500).json({ error: 'An error occurred while initializing the game' });
+  }
+});
+
+app.post('/update-preferences', async (req, res) => {
+  try {
+    const { imageStyle, voice } = req.body;
+    const updatedGame = await Game.findByIdAndUpdate(
+      gameState._id,
+      { $set: { imageStyle, voice } },
+      { new: true }
+    );
+    gameState = updatedGame;
+    res.json({ message: "Preferences updated", gameState });
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    res.status(500).json({ error: 'An error occurred while updating preferences' });
+  }
 });
 
 app.post('/add-player', async (req, res) => {
@@ -145,62 +170,11 @@ app.post('/story', async (req, res) => {
   }
 });
 
-async function generateAndStoreAudio(text, filename) {
-  try {
-    const response = await axios.post('http://ai-engine:5000/tts', 
-      { text },
-      { responseType: 'arraybuffer' }
-    );
-    
-    const buffer = Buffer.from(response.data);
-    await minioClient.putObject(audioBucketName, filename, buffer);
-    
-    return `/audio/${filename}`;
-  } catch (error) {
-    console.error('Error generating and storing audio:', error);
-    throw error;
-  }
-}
-
-app.post('/generate-audio', async (req, res) => {
-  try {
-    const { messageIndex } = req.body;
-    const message = gameState.storyMessages[messageIndex];
-    
-    if (message.audioFile) {
-      // Check if the file exists in MinIO
-      try {
-        await minioClient.statObject(audioBucketName, message.audioFile.split('/').pop());
-        return res.json({ audioFile: message.audioFile });
-      } catch (err) {
-        if (err.code === 'NotFound') {
-          console.log('Audio file not found in MinIO, regenerating...');
-          // File doesn't exist, we'll regenerate it
-        } else {
-          throw err;
-        }
-      }
-    }
-    
-    const audioFileName = `audio_${Date.now()}.mp3`;
-    const audioFile = await generateAndStoreAudio(message.content, audioFileName);
-    
-    message.audioFile = audioFile;
-    await saveGame();
-    
-    res.json({ audioFile: message.audioFile });
-  } catch (error) {
-    console.error('Error generating audio:', error);
-    res.status(500).json({ error: 'An error occurred while generating audio' });
-  }
-});
-
 
 app.post('/generate-image', async (req, res) => {
   try {
-    const { messageIndex } = req.body;
+    const { messageIndex, style } = req.body;
     
-    // Get the current message and the previous messages for context
     const currentMessage = gameState.storyMessages[messageIndex];
     const contextMessages = gameState.storyMessages.slice(Math.max(0, messageIndex - 3), messageIndex + 1);
     
@@ -208,7 +182,8 @@ app.post('/generate-image', async (req, res) => {
     
     const response = await axios.post('http://ai-engine:5000/generate-image', { 
       contextPrompt,
-      currentMessage: currentMessage.content
+      currentMessage: currentMessage.content,
+      style
     });
     
     const imageData = response.data.image;
@@ -222,10 +197,64 @@ app.post('/generate-image', async (req, res) => {
     currentMessage.imageFile = imageUrl;
     await saveGame();
     
-    res.json({ imageUrl });
+    res.json({ imageUrl, prompt: response.data.prompt });
   } catch (error) {
     console.error('Error generating image:', error);
     res.status(500).json({ error: 'An error occurred while generating the image' });
+  }
+});
+
+app.post('/generate-audio', async (req, res) => {
+  try {
+    const { messageIndex, voice } = req.body;
+    const message = gameState.storyMessages[messageIndex];
+    
+    if (message.audioFile) {
+      try {
+        await minioClient.statObject(audioBucketName, message.audioFile.split('/').pop());
+        return res.json({ audioFile: message.audioFile });
+      } catch (err) {
+        if (err.code !== 'NotFound') throw err;
+      }
+    }
+    
+    const audioFileName = `audio_${Date.now()}.mp3`;
+    const audioFile = await generateAndStoreAudio(message.content, audioFileName, voice);
+    
+    message.audioFile = audioFile;
+    await saveGame();
+    
+    res.json({ audioFile: message.audioFile });
+  } catch (error) {
+    console.error('Error generating audio:', error);
+    res.status(500).json({ error: 'An error occurred while generating audio' });
+  }
+});
+
+async function generateAndStoreAudio(text, filename, voice) {
+  try {
+    const response = await axios.post('http://ai-engine:5000/tts', 
+      { text, voice },
+      { responseType: 'arraybuffer' }
+    );
+    
+    const buffer = Buffer.from(response.data);
+    await minioClient.putObject(audioBucketName, filename, buffer);
+    
+    return `/audio/${filename}`;
+  } catch (error) {
+    console.error('Error generating and storing audio:', error);
+    throw error;
+  }
+}
+
+app.get('/available-voices', async (req, res) => {
+  try {
+    const response = await axios.get('http://ai-engine:5000/available-voices');
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching available voices:', error);
+    res.status(500).json({ error: 'An error occurred while fetching available voices' });
   }
 });
 

@@ -2,6 +2,8 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const Minio = require('minio');
 
 const app = express();
@@ -45,6 +47,15 @@ const imageBucketName = process.env.MINIO_IMAGE_BUCKET_NAME || 'image-files';
   }
 })();
 
+// User Schema
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Game Schema
 const GameSchema = new mongoose.Schema({
   title: String,
   playerRole: String,
@@ -59,122 +70,202 @@ const GameSchema = new mongoose.Schema({
   aiModel: String,
   imageStyle: { type: String, default: 'hand-drawn' },
   voice: { type: String, default: 'onyx' },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
+const User = mongoose.model('User', UserSchema);
 const Game = mongoose.model('Game', GameSchema);
 
-let gameState = null;
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
-async function saveGame() {
+// Middleware to verify JWT token
+const verifyToken = (req, res, next) => {
+  const token = req.header('Authorization');
+  if (!token) return res.status(401).json({ error: 'Access denied' });
+
   try {
-    if (gameState._id) {
-      await Game.findByIdAndUpdate(gameState._id, {
-        ...gameState,
-        updatedAt: new Date()
-      });
-    } else {
-      const newGame = new Game(gameState);
-      await newGame.save();
-      gameState._id = newGame._id;
-    }
-    console.log('Game auto-saved successfully');
-  } catch (error) {
-    console.error('Error auto-saving game:', error);
+    const verified = jwt.verify(token, JWT_SECRET);
+    req.user = verified;
+    next();
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid token' });
   }
-}
+};
 
-
-app.post('/init-game', async (req, res) => {
+// Routes
+app.post('/register', async (req, res) => {
   try {
-    const { playerRole, aiModel, imageStyle, voice } = req.body;
-    const newGame = new Game({
+    const { username, email, password } = req.body;
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = new User({
+      username,
+      email,
+      password: hashedPassword
+    });
+
+    await user.save();
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error registering user' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    if (!user) return res.status(400).json({ error: 'User not found' });
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+
+    const token = jwt.sign({ _id: user._id }, JWT_SECRET);
+    res.json({ token, userId: user._id });
+  } catch (error) {
+    res.status(500).json({ error: 'Error logging in' });
+  }
+});
+
+app.get('/user-games', verifyToken, async (req, res) => {
+  try {
+    const games = await Game.find({ user: req.user._id }).sort('-updatedAt');
+    res.json(games);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching games' });
+  }
+});
+
+app.post('/init-game', verifyToken, async (req, res) => {
+  try {
+    const { playerRole, aiModel, imageStyle, voice, title } = req.body;
+    const gameState = new Game({
+      title,
       playerRole,
       aiRole: playerRole === 'DM' ? 'Player' : 'DM',
       aiModel,
       imageStyle,
       voice,
-      storyMessages: [],
-      players: []
+      user: req.user._id
     });
-    await newGame.save();
-    res.json({ message: "Game initialized", gameState: newGame });
+    await gameState.save();
+    res.json({ message: 'Game initialized', gameState });
   } catch (error) {
-    console.error('Error initializing game:', error);
-    res.status(500).json({ error: 'An error occurred while initializing the game' });
+    res.status(500).json({ error: 'Error initializing game' });
   }
 });
 
-app.post('/update-preferences', async (req, res) => {
+app.get('/load-game/:id', verifyToken, async (req, res) => {
   try {
-    const { imageStyle, voice } = req.body;
-    const updatedGame = await Game.findByIdAndUpdate(
-      gameState._id,
-      { $set: { imageStyle, voice } },
+    const game = await Game.findOne({ _id: req.params.id, user: req.user._id });
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    res.json({ gameState: game });
+  } catch (error) {
+    res.status(500).json({ error: 'Error loading game' });
+  }
+});
+
+app.post('/update-preferences', verifyToken, async (req, res) => {
+  try {
+    const { gameId, imageStyle, voice } = req.body;
+    const game = await Game.findOneAndUpdate(
+      { _id: gameId, user: req.user._id },
+      { $set: { imageStyle, voice, updatedAt: new Date() } },
       { new: true }
     );
-    gameState = updatedGame;
-    res.json({ message: "Preferences updated", gameState });
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    res.json({ gameState: game });
   } catch (error) {
-    console.error('Error updating preferences:', error);
-    res.status(500).json({ error: 'An error occurred while updating preferences' });
+    res.status(500).json({ error: 'Error updating preferences' });
   }
 });
 
-app.post('/add-player', async (req, res) => {
-  const { playerName } = req.body;
-  gameState.players.push(playerName);
-  await saveGame();
-  res.json({ message: "Player added", gameState });
+app.post('/add-player', verifyToken, async (req, res) => {
+  try {
+    const { playerName } = req.body;
+    const gameId = req.body.gameId || req.query.gameId; // Accept gameId from body or query
+
+    if (!gameId) {
+      return res.status(400).json({ error: 'Game ID is required' });
+    }
+
+    const game = await Game.findOneAndUpdate(
+      { _id: gameId, user: req.user._id },
+      { $addToSet: { players: playerName }, $set: { updatedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    res.json({ gameState: game });
+  } catch (error) {
+    console.error('Error adding player:', error);
+    res.status(500).json({ error: 'Error adding player' });
+  }
 });
 
-function cleanPrefix(text) {
-  return text.replace(/^(Player:|DM:)\s*/i, '');
-}
-
-app.post('/story', async (req, res) => {
+app.post('/story', verifyToken, async (req, res) => {
   try {
-    const { action, sender } = req.body;
+    const { gameId, action, sender } = req.body;
     
-    const cleanedAction = cleanPrefix(action);
+    if (!gameId) {
+      return res.status(400).json({ error: 'Game ID is required' });
+    }
+
+    const game = await Game.findOne({ _id: gameId, user: req.user._id });
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+
+    game.storyMessages.push({ sender, content: action });
+    game.updatedAt = new Date();
+
+    const prompt = game.storyMessages.map(msg => `${msg.sender}: ${msg.content}`).join('\n');
+    const aiPrompt = `${prompt}\n\nAs the ${game.aiRole}, respond to this:`;
     
-    gameState.storyMessages.push({ 
-      sender, 
-      content: cleanedAction, 
-      audioFile: null 
-    });
-    
-    const prompt = gameState.storyMessages.map(msg => `${msg.sender}: ${msg.content}`).join('\n');
-    const aiPrompt = `${prompt}\n\nAs the ${gameState.aiRole}, respond to this:`;
-    
-    const aiResponse = await axios.post('http://ai-engine:5000/generate', {
+    const response = await axios.post('http://ai-engine:5000/generate', {
       prompt: aiPrompt,
-      model: gameState.aiModel
+      model: game.aiModel
     });
+    let aiResponse = response.data.generated_text.trim();
     
-    let aiGeneratedText = cleanPrefix(aiResponse.data.generated_text);
-    
-    gameState.storyMessages.push({ 
-      sender: gameState.aiRole, 
-      content: aiGeneratedText, 
-      audioFile: null 
-    });
-    
-    await saveGame();
-    
-    res.json({ aiResponse: aiGeneratedText, gameState });
+    // Remove any leading "Player:" or "DM:" from the AI response
+    aiResponse = aiResponse.replace(/^(Player:|DM:)\s*/i, '');
+    game.storyMessages.push({ sender: game.aiRole, content: aiResponse });
+
+    await game.save();
+    res.json({ gameState: game });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'An error occurred' });
+    console.error('Error updating story:', error);
+    res.status(500).json({ error: 'Error updating story' });
   }
 });
 
-
-app.post('/generate-image', async (req, res) => {
+app.get('/ai-models', async (req, res) => {
   try {
-    const { messageIndex, style } = req.body;
+    const response = await axios.get('http://ai-engine:5000/models');
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching AI models:', error);
+    res.status(500).json({ error: 'An error occurred while fetching AI models' });
+  }
+});
+
+app.post('/generate-image', verifyToken, async (req, res) => {
+  try {
+    const { gameId, messageIndex, style } = req.body;
     
+    if (!gameId) {
+      return res.status(400).json({ error: 'Game ID is required' });
+    }
+
+    const gameState = await Game.findOne({ _id: gameId, user: req.user._id });
+    if (!gameState) return res.status(404).json({ error: 'Game not found' });
+
     const currentMessage = gameState.storyMessages[messageIndex];
     const contextMessages = gameState.storyMessages.slice(Math.max(0, messageIndex - 3), messageIndex + 1);
     
@@ -195,7 +286,7 @@ app.post('/generate-image', async (req, res) => {
     
     const imageUrl = `/image/${imageFileName}`;
     currentMessage.imageFile = imageUrl;
-    await saveGame();
+    await gameState.save();
     
     res.json({ imageUrl, prompt: response.data.prompt });
   } catch (error) {
@@ -204,9 +295,16 @@ app.post('/generate-image', async (req, res) => {
   }
 });
 
-app.post('/generate-audio', async (req, res) => {
+app.post('/generate-audio', verifyToken, async (req, res) => {
   try {
-    const { messageIndex, voice } = req.body;
+    const { gameId, messageIndex, voice } = req.body;
+    if (!gameId) {
+      return res.status(400).json({ error: 'Game ID is required' });
+    }
+
+    const gameState = await Game.findOne({ _id: gameId, user: req.user._id });
+    if (!gameState) return res.status(404).json({ error: 'Game not found' });
+
     const message = gameState.storyMessages[messageIndex];
     
     if (message.audioFile) {
@@ -222,7 +320,7 @@ app.post('/generate-audio', async (req, res) => {
     const audioFile = await generateAndStoreAudio(message.content, audioFileName, voice);
     
     message.audioFile = audioFile;
-    await saveGame();
+    await gameState.save();
     
     res.json({ audioFile: message.audioFile });
   } catch (error) {
@@ -284,45 +382,7 @@ app.get('/image/:filename', async (req, res) => {
   }
 });
 
-app.get('/game-state', (req, res) => {
-  res.json(gameState);
-});
-
-app.get('/ai-models', async (req, res) => {
-  try {
-    const response = await axios.get('http://ai-engine:5000/models');
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error fetching AI models:', error);
-    res.status(500).json({ error: 'An error occurred while fetching AI models' });
-  }
-});
-
-app.get('/saved-games', async (req, res) => {
-  try {
-    const games = await Game.find().sort('-updatedAt').limit(10);
-    res.json(games);
-  } catch (error) {
-    console.error('Error fetching saved games:', error);
-    res.status(500).json({ error: 'An error occurred while fetching saved games' });
-  }
-});
-
-app.get('/load-game/:id', async (req, res) => {
-  try {
-    const game = await Game.findById(req.params.id);
-    if (game) {
-      gameState = game.toObject();
-      res.json({ message: "Game loaded successfully", gameState });
-    } else {
-      res.status(404).json({ error: 'Game not found' });
-    }
-  } catch (error) {
-    console.error('Error loading game:', error);
-    res.status(500).json({ error: 'An error occurred while loading the game' });
-  }
-});
-
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Game server listening at http://0.0.0.0:${port}`);
+// Start the server
+app.listen(port, () => {
+  console.log(`Game server listening at http://localhost:${port}`);
 });

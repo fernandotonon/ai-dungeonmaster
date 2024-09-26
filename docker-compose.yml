@@ -29,7 +29,9 @@ services:
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET_NAME=audio-files
+      - MINIO_AUDIO_BUCKET_NAME=audio-files
+      - MINIO_IMAGE_BUCKET_NAME=image-files
+      - JWT_SECRET=ai-dungeonmaster-secret
     depends_on:
       - ai-engine
       - mongodb      

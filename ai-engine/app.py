@@ -79,6 +79,42 @@ def text_to_speech():
         logger.error(f"Error in text_to_speech: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+def generate_response(prompt, model):
+    try:
+        openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
+        
+        response = openai_client.chat.completions.create(
+            model=openai_model,
+            messages=[
+                {"role": "system", "content": "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. Respond appropriately based on the role specified in the prompt. Keep your responses concise and relevant to the game context."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        logger.error(f"Error generating {model} response: {str(e)}")
+        raise
+
+@app.route('/generate', methods=['POST'])
+def generate_text():
+    data = request.json
+    prompt = data['prompt']
+    model = data.get('model', 'gpt4o-mini')  # Default to GPT-4o-mini if not specified
+    
+    try:
+        logger.info(f"Generating text with model: {model}")
+        if model in MODEL_MAPPING:
+            generated_text = generate_response(prompt, model)
+        else:
+            return jsonify({'error': 'Invalid model specified'}), 400
+        
+        return jsonify({'generated_text': generated_text})
+    except Exception as e:
+        logger.error(f"Error in generate_text: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/available-voices', methods=['GET'])
 def get_available_voices():
     return jsonify({'voices': AVAILABLE_VOICES})

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from './services/api';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -19,6 +19,7 @@ function App() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  const token = localStorage.getItem('token');
 
   const imageStyles = [
     'realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
@@ -28,17 +29,15 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      fetchUserGames(token);
+      fetchUserGames();
     }
     fetchAiModels();
     fetchAvailableVoices();
   }, []);
 
-  const fetchUserGames = async (token) => {
+  const fetchUserGames = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/user-games', {
-        headers: { 'Authorization': token }
-      });
+      const response = await api.game.getUserGames();
       setUserGames(response.data);
     } catch (error) {
       console.error('Error fetching user games:', error);
@@ -48,7 +47,7 @@ function App() {
 
   const fetchAiModels = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/ai-models');
+      const response = await api.ai.getAIModels();
       setAiModels(response.data.models);
     } catch (error) {
       console.error('Error fetching AI models:', error);
@@ -58,7 +57,7 @@ function App() {
 
   const fetchAvailableVoices = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/available-voices');
+      const response = await api.ai.getAvailableVoices();
       setAvailableVoices(response.data.voices);
     } catch (error) {
       console.error('Error fetching available voices:', error);
@@ -67,7 +66,7 @@ function App() {
 
   const register = async () => {
     try {
-      await axios.post('http://localhost:3000/register', { username, email, password });
+      await api.auth.register(username, email, password);
       setError('Registration successful. Please log in.');
     } catch (error) {
       setError('Registration failed');
@@ -76,10 +75,10 @@ function App() {
 
   const login = async () => {
     try {
-      const response = await axios.post('http://localhost:3000/login', { username, password });
+      const response = await api.auth.login(username, password);
       localStorage.setItem('token', response.data.token);
       setUser({ id: response.data.userId, username });
-      fetchUserGames(response.data.token);
+      fetchUserGames();
     } catch (error) {
       setError('Login failed');
     }
@@ -94,18 +93,12 @@ function App() {
 
   const initGame = async (role) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:3000/init-game', 
-        { 
-          playerRole: role,
-          aiModel: selectedModel,
-          imageStyle,
-          voice: selectedVoice,
-          title: `New Game ${userGames.length + 1}`
-        }, 
-        {
-          headers: { 'Authorization': token }
-        }
+      const response = await api.game.initGame(
+        role,
+        selectedModel,
+        imageStyle,
+        selectedVoice,
+        `New Game ${userGames.length + 1}`
       );
       setGameState(response.data.gameState);
       setError(null);
@@ -117,16 +110,107 @@ function App() {
   
   const loadGame = async (gameId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:3000/load-game/${gameId}`, {
-        headers: { 'Authorization': token }
-      });
+      const response = await api.game.loadGame(gameId);
       setGameState(response.data.gameState);
       setImageStyle(response.data.gameState.imageStyle || 'hand-drawn');
       setSelectedVoice(response.data.gameState.voice || 'onyx');
     } catch (error) {
       console.error('Error loading game:', error);
       setError('Failed to load game');
+    }
+  };
+
+  const updatePreferences = async (newImageStyle, newVoice) => {
+    if (!gameState || !gameState._id) {
+      setError('No active game. Please start or load a game first.');
+      return;
+    }
+
+    try {
+      const response = await api.game.updatePreferences(gameState._id, newImageStyle, newVoice);
+      setGameState(response.data.gameState);
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      setError('Failed to update preferences');
+    }
+  };
+
+  const addPlayer = async () => {
+    if (!gameState || !gameState._id) {
+      setError('No active game. Please start or load a game first.');
+      return;
+    }
+  
+    try {
+      const response = await api.game.addPlayer(gameState._id, playerName);
+      setPlayerName('');
+      setGameState(response.data.gameState);
+    } catch (error) {
+      console.error('Error adding player:', error);
+      setError(error.response?.data?.error || 'Failed to add player');
+    }
+  };
+
+  const submitAction = async () => {
+    if (!gameState || !gameState._id) {
+      setError('No active game. Please start or load a game first.');
+      return;
+    }
+  
+    try {
+      const response = await api.ai.submitStory(gameState._id, action, gameState.playerRole);
+      setGameState(response.data.gameState);
+      setAction('');
+    } catch (error) {
+      console.error('Error submitting action:', error);
+      setError(error.response?.data?.error || 'Failed to submit action');
+    }
+  };
+
+  const generateImage = async (messageIndex) => {
+    if (!gameState || !gameState._id) {
+      setError('No active game. Please start or load a game first.');
+      return;
+    }
+
+    if (isGeneratingImage) return;
+
+    setIsGeneratingImage(true);
+    try {      
+      const response = await api.ai.generateImage(gameState._id, messageIndex, imageStyle);
+      const updatedGameState = { ...gameState };
+      updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
+      setGameState(updatedGameState);
+    } catch (error) {
+      console.error('Error generating image:', error);
+      setError('Failed to generate image');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const generateAndPlayAudio = async (messageIndex) => {
+    if (!gameState || !gameState._id) {
+      setError('No active game. Please start or load a game first.');
+      return;
+    }
+    if (isGeneratingAudio) return;
+
+    setIsGeneratingAudio(true);
+    try {
+      const response = await api.ai.generateAudio(gameState._id, messageIndex, selectedVoice);
+      const audioFile = response.data.audioFile;
+      audioPlayer.src = api.ai.getAudioFile(audioFile);
+      audioPlayer.play();
+      
+      const updatedGameState = { ...gameState };
+      updatedGameState.storyMessages[messageIndex].audioFile = audioFile;
+      setGameState(updatedGameState);
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      setError('Failed to generate audio');
+    } finally {
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -200,141 +284,6 @@ function App() {
   );
 
   const renderGameInterface = () => {
-    const token = localStorage.getItem('token');
-
-    const updatePreferences = async (newImageStyle, newVoice) => {
-      if (!gameState || !gameState._id) {
-        setError('No active game. Please start or load a game first.');
-        return;
-      }
-
-      try {
-        const response = await axios.post('http://localhost:3000/update-preferences', {
-          gameId: gameState._id,
-          imageStyle: newImageStyle,
-          voice: newVoice
-        }, {
-          headers: { 'Authorization': token }
-        });
-        setGameState(response.data.gameState);
-      } catch (error) {
-        console.error('Error updating preferences:', error);
-        setError('Failed to update preferences');
-      }
-    };
-
-    const addPlayer = async () => {
-      if (!gameState || !gameState._id) {
-        setError('No active game. Please start or load a game first.');
-        return;
-      }
-    
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.post('http://localhost:3000/add-player', 
-          { 
-            gameId: gameState._id,
-            playerName 
-          },
-          {
-            headers: { 'Authorization': token }
-          }
-        );
-        setPlayerName('');
-        setGameState(response.data.gameState);
-      } catch (error) {
-        console.error('Error adding player:', error);
-        setError(error.response?.data?.error || 'Failed to add player');
-      }
-    };
-
-    const submitAction = async () => {
-      if (!gameState || !gameState._id) {
-        setError('No active game. Please start or load a game first.');
-        return;
-      }
-    
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.post('http://localhost:3000/story', 
-          { 
-            gameId: gameState._id,
-            action, 
-            sender: gameState.playerRole
-          }, 
-          {
-            headers: { 'Authorization': token }
-          }
-        );
-        setGameState(response.data.gameState);
-        setAction('');
-      } catch (error) {
-        console.error('Error submitting action:', error);
-        setError(error.response?.data?.error || 'Failed to submit action');
-      }
-    };
-
-    const generateImage = async (messageIndex) => {
-      if (!gameState || !gameState._id) {
-        setError('No active game. Please start or load a game first.');
-        return;
-      }
-
-      if (isGeneratingImage) return;
-
-      setIsGeneratingImage(true);
-      try {      
-        const token = localStorage.getItem('token');
-        const response = await axios.post('http://localhost:3000/generate-image', { 
-          gameId: gameState._id,
-          messageIndex,
-          style: imageStyle,
-        }, {
-          headers: { 'Authorization': token }
-        });
-        const updatedGameState = { ...gameState };
-        updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
-        setGameState(updatedGameState);
-      } catch (error) {
-        console.error('Error generating image:', error);
-        setError('Failed to generate image');
-      } finally {
-        setIsGeneratingImage(false);
-      }
-    };
-
-    const generateAndPlayAudio = async (messageIndex) => {
-      if (!gameState || !gameState._id) {
-        setError('No active game. Please start or load a game first.');
-        return;
-      }
-      if (isGeneratingAudio) return;
-
-      setIsGeneratingAudio(true);
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.post('http://localhost:3000/generate-audio', { 
-          gameId: gameState._id,
-          messageIndex,
-          voice: selectedVoice
-        }, {
-          headers: { 'Authorization': token }
-        });
-        const audioFile = response.data.audioFile;
-        audioPlayer.src = `http://localhost:3000${audioFile}`;
-        audioPlayer.play();
-        
-        const updatedGameState = { ...gameState };
-        updatedGameState.storyMessages[messageIndex].audioFile = audioFile;
-        setGameState(updatedGameState);
-      } catch (error) {
-        console.error('Error generating audio:', error);
-        setError('Failed to generate audio');
-      } finally {
-        setIsGeneratingAudio(false);
-      }
-    };
-
     return (
       <div>
         <h2 className="text-2xl font-bold mb-4">{gameState.title || 'Untitled Story'}</h2>
@@ -423,7 +372,7 @@ function App() {
                 </button>
                 {message.imageFile && (
                   <div className="mt-2">
-                    <img src={`http://localhost:3000${message.imageFile}`} alt="Generated scene" className="max-w-full h-auto" />
+                    <img src={api.ai.getImageFile(message.imageFile)} alt="Generated scene" className="max-w-full h-auto" />
                   </div>
                 )}
               </div>

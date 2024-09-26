@@ -75,14 +75,14 @@ router.post('/generate-image', verifyToken, async (req, res) => {
     const imageData = response.data.image;
     
     const buffer = Buffer.from(imageData, 'base64');
-    const imageFileName = `image_${Date.now()}.png`;
+    const imageFileName = `image_${gameId}_${Date.now()}.png`;
     
-    const imageUrl = await storeFile(imageBucketName, imageFileName, buffer);
+    await storeFile(imageBucketName, imageFileName, buffer);
     
-    currentMessage.imageFile = imageUrl;
+    currentMessage.imageFile = `/image/${imageFileName}`;
     await gameState.save();
     
-    res.json({ imageUrl, prompt: response.data.prompt });
+    res.json({ imageUrl: currentMessage.imageFile, prompt: response.data.prompt });
   } catch (error) {
     console.error('Error generating image:', error);
     res.status(500).json({ error: 'An error occurred while generating the image' });
@@ -116,11 +116,11 @@ router.post('/generate-audio', verifyToken, async (req, res) => {
     );
     
     const buffer = Buffer.from(response.data);
-    const audioFileName = `audio_${Date.now()}.mp3`;
+    const audioFileName = `audio_${gameId}_${Date.now()}.mp3`;
     
-    const audioFile = await storeFile(audioBucketName, audioFileName, buffer);
+    await storeFile(audioBucketName, audioFileName, buffer);
     
-    message.audioFile = audioFile;
+    message.audioFile = `/audio/${audioFileName}`;
     await gameState.save();
     
     res.json({ audioFile: message.audioFile });

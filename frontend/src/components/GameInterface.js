@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TextField, 
   Button, 
@@ -9,46 +9,68 @@ import {
   IconButton,
   Typography,
   Paper,
-  Grid
+  Grid,
+  Box
 } from '@mui/material';
-import { VolumeUp, Image } from '@mui/icons-material';
-import styled from 'styled-components';
+import { VolumeUp, Image, Brightness4, Brightness7 } from '@mui/icons-material';
+import { styled } from '@mui/material/styles';
+import { useTheme } from '../ThemeContext';
 import api from '../services/api';
 import VoiceInput from './VoiceInput';
-
-const GameContainer = styled(Paper)`
-  padding: 20px;
-  margin-top: 20px;
-`;
-
-const StoryContainer = styled(Paper)`
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 10px;
-  margin-top: 20px;
-`;
-
-const Message = styled.div`
-  margin-bottom: 10px;
-  padding: 10px;
-  border-radius: 4px;
-  background-color: ${props => props.sender === props.aiRole ? '#e3f2fd' : '#e8f5e9'};
-`;
-
-const ImageContainer = styled.div`
-  max-width: 100%;
-  margin-top: 10px;
-`;
-
-const ActionContainer = styled.div`
-  margin-top: 20px;
-`;
+import { getRandomBackground } from '../utils/backgroundUtils';
 
 const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) => {
+  const [backgroundImage, setBackgroundImage] = useState('');
   const [action, setAction] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const { darkMode, toggleTheme } = useTheme();
+
+  const GameContainer = styled(Paper)(({ theme }) => ({
+    padding: '20px',
+    marginTop: '20px',
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    color: theme.palette.text.primary,
+  }));
+
+  const ContentContainer = styled(Box)(({ theme }) => ({
+    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+    padding: '20px',
+    borderRadius: '8px',
+  }));
+
+  const StoryContainer = styled(Paper)(({ theme }) => ({
+    maxHeight: '400px',
+    overflowY: 'auto',
+    padding: '10px',
+    marginTop: '20px',
+    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+  }));
+
+  const Message = styled(Box)(({ theme, sender, aiRole }) => ({
+    marginBottom: '10px',
+    padding: '10px',
+    borderRadius: '4px',
+    backgroundColor: sender === aiRole 
+      ? theme.palette.mode === 'dark' ? 'rgba(0, 0, 255, 0.2)' : 'rgba(0, 0, 255, 0.1)'
+      : theme.palette.mode === 'dark' ? 'rgba(0, 255, 0, 0.2)' : 'rgba(0, 255, 0, 0.1)',
+  }));
+
+  const ImageContainer = styled(Box)({
+    maxWidth: '100%',
+    marginTop: '10px',
+  });
+
+  const ActionContainer = styled(Box)({
+    marginTop: '20px',
+  });
+
+  useEffect(() => {
+    setBackgroundImage(getRandomBackground());
+  }, []);
 
   const handleUpdatePreferences = async (newImageStyle, newVoice) => {
     try {
@@ -114,140 +136,145 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
     }
   };
 
-  const voices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
-
   return (
     <GameContainer elevation={3}>
-      <Typography variant="h4" gutterBottom>
-        {gameState.title || 'Untitled Story'}
-      </Typography>
-      
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth>
-            <InputLabel>Image Style</InputLabel>
-            <Select
-              value={gameState.imageStyle}
-              onChange={(e) => handleUpdatePreferences(e.target.value, gameState.voice)}
-            >
-              {['realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
-                'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
-                <MenuItem key={style} value={style}>{style}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth>
-            <InputLabel>Voice</InputLabel>
-            <Select
-              value={gameState.voice}
-              onChange={(e) => handleUpdatePreferences(gameState.imageStyle, e.target.value)}
-            >
-              {voices.map(voice => (
-                <MenuItem key={voice} value={voice.toLowerCase()}>{voice}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
-
-      <Typography variant="body1" gutterBottom>
-        Your Role: {gameState.playerRole}
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        AI Role: {gameState.aiRole}
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        AI Model: {gameState.aiModel}
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        Players: {gameState.players.join(', ')}
-      </Typography>
-
-      {gameState.playerRole === 'DM' && (
-        <Grid container spacing={2} style={{ marginTop: '20px' }}>
-          <Grid item xs={12} sm={8}>
-            <TextField
-              label="Player Name"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              fullWidth
-            />
+      <ContentContainer>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="h4" gutterBottom>
+            {gameState.title || 'Untitled Story'}
+          </Typography>
+          <IconButton onClick={toggleTheme} color="inherit">
+            {darkMode ? <Brightness7 /> : <Brightness4 />}
+          </IconButton>
+        </Box>
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Image Style</InputLabel>
+              <Select
+                value={gameState.imageStyle}
+                onChange={(e) => handleUpdatePreferences(e.target.value, gameState.voice)}
+              >
+                {['realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
+                  'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
+                  <MenuItem key={style} value={style}>{style}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
-          <Grid item xs={12} sm={4}>
-            <Button 
-              onClick={handleAddPlayer} 
-              variant="contained" 
-              color="secondary"
-              fullWidth
-            >
-              Add Player
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Voice</InputLabel>
+              <Select
+                value={gameState.voice}
+                onChange={(e) => handleUpdatePreferences(gameState.imageStyle, e.target.value)}
+              >
+                {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(voice => (
+                  <MenuItem key={voice} value={voice.toLowerCase()}>{voice}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+
+        <Typography variant="body1" gutterBottom>
+          Your Role: {gameState.playerRole}
+        </Typography>
+        <Typography variant="body1" gutterBottom>
+          AI Role: {gameState.aiRole}
+        </Typography>
+        <Typography variant="body1" gutterBottom>
+          AI Model: {gameState.aiModel}
+        </Typography>
+        <Typography variant="body1" gutterBottom>
+          Players: {gameState.players.join(', ')}
+        </Typography>
+
+        {gameState.playerRole === 'DM' && (
+          <Grid container spacing={2} style={{ marginTop: '20px' }}>
+            <Grid item xs={12} sm={8}>
+              <TextField
+                label="Player Name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Button 
+                onClick={handleAddPlayer} 
+                variant="contained" 
+                color="secondary"
+                fullWidth
+              >
+                Add Player
+              </Button>
+            </Grid>
+          </Grid>
+        )}
+
+        <ActionContainer>
+          <TextField
+            label="Enter your action or narrative"
+            multiline
+            rows={4}
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+            fullWidth
+          />
+          <Box display="flex" justifyContent="space-between" marginTop="10px">
+            <Button onClick={() => handleSubmitAction(action)} variant="contained" color="primary">
+              Submit Action
             </Button>
-          </Grid>
-        </Grid>
-      )}
+            <VoiceInput 
+              onTranscript={handleSubmitAction} 
+              setError={setError} 
+              gameState={gameState}
+            />
+          </Box>
+        </ActionContainer>
 
-      <ActionContainer>
-      <TextField
-        label="Enter your action or narrative"
-        multiline
-        rows={4}
-        value={action}
-        onChange={(e) => setAction(e.target.value)}
-        fullWidth
-      />
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-        <Button onClick={() => handleSubmitAction(action)} variant="contained" color="primary">
-          Submit Action
+        <StoryContainer elevation={2}>
+          {gameState.storyMessages.map((message, index) => (
+            <Message key={message.id} sender={message.sender} aiRole={gameState.aiRole}>
+              <Typography variant="subtitle1">
+                <strong>{message.sender}:</strong> {message.content}
+              </Typography>
+              <IconButton 
+                onClick={() => handleGenerateAudio(index)}
+                disabled={isGeneratingAudio}
+              >
+                <VolumeUp />
+              </IconButton>
+              <IconButton 
+                onClick={() => handleGenerateImage(index)}
+                disabled={isGeneratingImage}
+              >
+                <Image />
+              </IconButton>
+              {message.imageFile && (
+                <ImageContainer>
+                  <img 
+                    src={api.ai.getImageFile(message.imageFile)} 
+                    alt="Generated scene" 
+                    style={{ maxWidth: '100%' }} 
+                  />
+                </ImageContainer>
+              )}
+            </Message>
+          ))}
+        </StoryContainer>
+
+        <Button 
+          onClick={onBackToGameList} 
+          variant="contained" 
+          color="secondary"
+          style={{ marginTop: '20px' }}
+        >
+          Back to Game List
         </Button>
-        <VoiceInput 
-          onTranscript={handleSubmitAction} 
-          setError={setError} 
-          gameState={gameState}
-        />
-      </div>
-      </ActionContainer>
-
-      <StoryContainer elevation={2}>
-        {gameState.storyMessages.map((message, index) => (
-          <Message key={message.id} sender={message.sender} aiRole={gameState.aiRole}>
-            <Typography variant="subtitle1">
-              <strong>{message.sender}:</strong> {message.content}
-            </Typography>
-            <IconButton 
-              onClick={() => handleGenerateAudio(index)}
-              disabled={isGeneratingAudio}
-            >
-              <VolumeUp />
-            </IconButton>
-            <IconButton 
-              onClick={() => handleGenerateImage(index)}
-              disabled={isGeneratingImage}
-            >
-              <Image />
-            </IconButton>
-            {message.imageFile && (
-              <ImageContainer>
-                <img 
-                  src={api.ai.getImageFile(message.imageFile)} 
-                  alt="Generated scene" 
-                  style={{ maxWidth: '100%' }} 
-                />
-              </ImageContainer>
-            )}
-          </Message>
-        ))}
-      </StoryContainer>
-
-      <Button 
-        onClick={onBackToGameList} 
-        variant="contained" 
-        color="secondary"
-        style={{ marginTop: '20px' }}
-      >
-        Back to Game List
-      </Button>
+      </ContentContainer>
     </GameContainer>
   );
 };

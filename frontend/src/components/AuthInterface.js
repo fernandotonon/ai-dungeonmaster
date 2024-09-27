@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Button, Box, Typography, Switch, FormControlLabel, Paper } from '@mui/material';
+import { 
+  TextField, 
+  Button, 
+  Box, 
+  Typography, 
+  Switch, 
+  FormControlLabel, 
+  Paper,
+  IconButton
+} from '@mui/material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+import { useTheme } from '../ThemeContext';
 import api from '../services/api';
+import { getRandomBackground } from '../utils/backgroundUtils';
 
 const BackgroundContainer = styled(Box)(({ theme }) => ({
   height: '100vh',
@@ -10,14 +22,13 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
   justifyContent: 'center',
   backgroundSize: 'cover',
   backgroundPosition: 'center',
-  transition: 'background-image 0.5s ease-in-out',
 }));
 
 const FormContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   maxWidth: 400,
   width: '100%',
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
 }));
 
 const Form = styled('form')(({ theme }) => ({
@@ -26,18 +37,6 @@ const Form = styled('form')(({ theme }) => ({
   gap: theme.spacing(2),
 }));
 
-const backgroundImages = [
-  '/background-images/greek.webp',
-  '/background-images/japan.webp',
-  '/background-images/magical.webp',
-  '/background-images/mistery-forest.webp',
-  '/background-images/oldwest.webp',
-  '/background-images/pirate.webp',
-  '/background-images/space.webp',
-  '/background-images/steampunk.webp',
-  '/background-images/underwater.webp',
-];
-
 const AuthInterface = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -45,10 +44,10 @@ const AuthInterface = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
   const [backgroundImage, setBackgroundImage] = useState('');
+  const { darkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
-    const randomImage = backgroundImages[Math.floor(Math.random() * backgroundImages.length)];
-    setBackgroundImage(randomImage);
+    setBackgroundImage(getRandomBackground());
   }, []);
 
   const handleSubmit = async (e) => {
@@ -72,9 +71,14 @@ const AuthInterface = ({ onLogin }) => {
   return (
     <BackgroundContainer style={{ backgroundImage: `url(${backgroundImage})` }}>
       <FormContainer elevation={3}>
-        <Typography variant="h5" gutterBottom>
-          {isRegistering ? 'Register' : 'Login'}
-        </Typography>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" gutterBottom>
+            {isRegistering ? 'Register' : 'Login'}
+          </Typography>
+          <IconButton onClick={toggleTheme} color="inherit">
+            {darkMode ? <Brightness7 /> : <Brightness4 />}
+          </IconButton>
+        </div>
         <Form onSubmit={handleSubmit}>
           <TextField
             label="Username"

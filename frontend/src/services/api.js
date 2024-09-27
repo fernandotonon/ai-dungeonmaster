@@ -1,26 +1,23 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = process.env.API_URL || 'http://localhost:3000';
 
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true // Required to send cookies with requests
 });
-
-// Add a request interceptor to include the token in every request
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = token;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
 export const auth = {
   register: (username, email, password) => api.post('/auth/register', { username, email, password }),
-  login: (username, password) => api.post('/auth/login', { username, password }),
+  login: async (username, password) => {
+    const response = await api.post('/auth/login', { username, password });
+    return response.data;
+  },
+  logout: () => api.post('/auth/logout'),
+  checkLoginStatus: async () => {
+    const response = await api.get('/auth/check');
+    return response.data;
+  },
 };
 
 export const game = {

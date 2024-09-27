@@ -24,13 +24,26 @@ function App() {
   const [gameState, setGameState] = useState(null);
   const [error, setError] = useState(null);
   const [userGames, setUserGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchUserGames();
-    }
+    checkLoginStatus();
   }, []);
+
+  const checkLoginStatus = async () => {
+    try {
+      const response = await api.auth.checkLoginStatus();
+      if (response.user) {
+        setUser(response.user);
+        await fetchUserGames();
+      }
+    } catch (error) {
+      console.error('Failed to check login status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchUserGames = async () => {
     try {
@@ -42,9 +55,9 @@ function App() {
     }
   };
 
-  const handleLogin = (userId, username) => {
-    setUser({ id: userId, username });
-    fetchUserGames();
+  const handleLogin = async (userData) => {
+    setUser(userData);
+    await fetchUserGames();
   };
 
   const handleLogout = () => {
@@ -84,6 +97,10 @@ function App() {
       setError('Failed to load game');
     }
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <AppContainer>

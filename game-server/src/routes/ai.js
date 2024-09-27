@@ -23,10 +23,13 @@ const getOrCreateAudioFile = async (gameId, text, audioBuffer = null) => {
     await getFile(audioBucketName, audioFileName);
     return `/audio/${audioFileName}`;
   } catch (error) {
-    if (error.code === 'NoSuchKey' && audioBuffer) {
-      // File doesn't exist, so store it
-      await storeFile(audioBucketName, audioFileName, audioBuffer);
-      return `/audio/${audioFileName}`;
+    if (error.code === 'NoSuchKey'){
+      if(audioBuffer) {
+        // File doesn't exist, so store it
+        await storeFile(audioBucketName, audioFileName, audioBuffer);
+        return `/audio/${audioFileName}`;
+      }
+      return;
     }
     throw error;
   }

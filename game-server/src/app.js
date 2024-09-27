@@ -1,4 +1,5 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const { initializeBuckets } = require('./services/minioService');
@@ -15,8 +16,12 @@ connectDB();
 initializeBuckets();
 
 // Middleware
-app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+app.use(cors({
+  origin: 'http://localhost', 
+  credentials: true
+}));
 
 // Routes
 app.use('/auth', authRoutes);

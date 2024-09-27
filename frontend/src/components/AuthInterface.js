@@ -27,8 +27,7 @@ const AuthInterface = ({ onLogin }) => {
         setIsRegistering(false);
       } else {
         const response = await api.auth.login(username, password);
-        localStorage.setItem('token', response.data.token);
-        onLogin(response.data.userId, username);
+        onLogin(response.user);
       }
     } catch (error) {
       setError(isRegistering ? 'Registration failed' : 'Login failed');

@@ -14,6 +14,7 @@ import {
 import { VolumeUp, Image } from '@mui/icons-material';
 import styled from 'styled-components';
 import api from '../services/api';
+import VoiceInput from './VoiceInput';
 
 const GameContainer = styled(Paper)`
   padding: 20px;
@@ -43,7 +44,7 @@ const ActionContainer = styled.div`
   margin-top: 20px;
 `;
 
-const GameInterface = ({ gameState, setGameState, onBackToGameList }) => {
+const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) => {
   const [action, setAction] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -68,13 +69,14 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList }) => {
     }
   };
 
-  const handleSubmitAction = async () => {
+  const handleSubmitAction = async (text) => {
     try {
-      const response = await api.ai.submitStory(gameState._id, action, gameState.playerRole);
+      const response = await api.ai.submitStory(gameState._id, text, gameState.playerRole);
       setGameState(response.data.gameState);
       setAction('');
     } catch (error) {
       console.error('Error submitting action:', error);
+      setError('Failed to submit action. Please try again.');
     }
   };
 
@@ -187,24 +189,23 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList }) => {
       )}
 
       <ActionContainer>
-        <TextField
-          label="Enter your action or narrative"
-          multiline
-          rows={3}
-          value={action}
-          onChange={(e) => setAction(e.target.value)}
-          fullWidth
-          variant="outlined"
-        />
-        <Button 
-          onClick={handleSubmitAction} 
-          variant="contained" 
-          color="primary"
-          fullWidth
-          style={{ marginTop: '10px' }}
-        >
+      <TextField
+        label="Enter your action or narrative"
+        multiline
+        rows={4}
+        value={action}
+        onChange={(e) => setAction(e.target.value)}
+        fullWidth
+      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+        <Button onClick={() => handleSubmitAction(action)} variant="contained" color="primary">
           Submit Action
         </Button>
+        <VoiceInput 
+          onTranscript={handleSubmitAction} 
+          setError={setError} 
+        />
+      </div>
       </ActionContainer>
 
       <StoryContainer elevation={2}>

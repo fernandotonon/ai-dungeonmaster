@@ -23,6 +23,31 @@ MODEL_MAPPING = {
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
+@app.route('/speech-to-text', methods=['POST'])
+def speech_to_text():
+    try:
+        # Create a temporary file to store the audio
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_audio:
+            # Write the incoming stream to the temporary file
+            temp_audio.write(request.stream.read())
+            temp_audio.flush()
+
+        # Use the temporary file with the Whisper API
+        with open(temp_audio.name, 'rb') as audio_file:
+            transcript = openai_client.audio.transcriptions.create(
+                model="whisper-1", 
+                file=audio_file,
+                response_format="text"
+            )
+        
+        # Delete the temporary file
+        os.unlink(temp_audio.name)
+        
+        return jsonify({'transcript': transcript})
+    except Exception as e:
+        logger.error(f"Error in speech_to_text: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
     data = request.json

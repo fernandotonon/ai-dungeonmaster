@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const stream = require('stream');
 const verifyToken = require('../middleware/auth');
 const Game = require('../models/Game');
 const { storeFile, getFile, audioBucketName, imageBucketName } = require('../services/minioService');
@@ -164,6 +165,28 @@ router.get('/image/:filename', async (req, res) => {
     console.error('Error retrieving image file:', error);
     res.status(404).send('Image file not found');
   }
+});
+
+router.post('/speech-to-text', verifyToken, (req, res) => {
+  const passThrough = new stream.PassThrough();
+
+  axios.post('http://ai-engine:5000/speech-to-text', passThrough, {
+    headers: {
+      ...req.headers,
+      'host': 'ai-engine:5000',
+      'content-type': 'audio/webm',
+    },
+    responseType: 'json',
+  })
+  .then(response => {
+    res.json(response.data);
+  })
+  .catch(error => {
+    console.error('Error in speech to text conversion:', error);
+    res.status(500).json({ error: 'An error occurred during speech to text conversion' });
+  });
+
+  req.pipe(passThrough);
 });
 
 module.exports = router;

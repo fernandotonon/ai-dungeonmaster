@@ -4,7 +4,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
 import api from '../services/api';
 
-const VoiceInput = ({ onTranscript, setError }) => {
+const VoiceInput = ({ onTranscript, setError, gameState }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorder = useRef(null);
@@ -40,7 +40,7 @@ const VoiceInput = ({ onTranscript, setError }) => {
     setIsProcessing(true);
     const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
     try {
-      const response = await api.ai.speechToText(audioBlob);
+      const response = await api.ai.speechToText(gameState._id, audioBlob);
       const transcript = response.data.transcript;
       onTranscript(transcript);
     } catch (error) {

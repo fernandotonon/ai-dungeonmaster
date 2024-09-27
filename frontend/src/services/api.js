@@ -43,11 +43,13 @@ export const ai = {
   getAudioFile: (filename) => `${API_URL}/ai${filename}`,
   getImageFile: (filename) => `${API_URL}/ai${filename}`,
   getAvailableVoices: () => api.get('/ai/available-voices'),
-  speechToText: (formData) => api.post('/ai/speech-to-text', formData, {
-    headers: {
-      'Content-Type': 'audio/webm',  
-    },
-  }),
+  speechToText: (gameId, audioBlob) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'audio.webm');
+    formData.append('gameId', gameId); // Adding the gameId in the form data
+  
+    return api.post('/ai/speech-to-text', formData);
+  },  
 };
 
 const apiServices = {

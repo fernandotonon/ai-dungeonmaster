@@ -204,6 +204,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
         <VoiceInput 
           onTranscript={handleSubmitAction} 
           setError={setError} 
+          gameState={gameState}
         />
       </div>
       </ActionContainer>

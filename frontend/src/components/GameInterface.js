@@ -114,7 +114,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
     }
   };
 
-  const voices = ['Alloy', 'Echo', 'Fable', 'Onyx', 'Nova', 'Shimmer'];
+  const voices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
 
   return (
     <GameContainer elevation={3}>

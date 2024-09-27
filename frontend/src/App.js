@@ -60,8 +60,8 @@ function App() {
     await fetchUserGames();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    await api.auth.logout(); 
     setUser(null);
     setGameState(null);
     setUserGames([]);

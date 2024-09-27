@@ -19,7 +19,7 @@ initializeBuckets();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: 'http://localhost', 
+  origin: ['http://localhost', 'http://192.168.18.3'], 
   credentials: true
 }));
 

@@ -15,9 +15,9 @@ const GamesList = styled(List)`
 `;
 
 const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) => {
-  const [selectedModel, setSelectedModel] = useState('gpt4o-mini');
+  const [selectedModel, setSelectedModel] = useState('');
   const [imageStyle, setImageStyle] = useState('fantasy illustration');
-  const [selectedVoice, setSelectedVoice] = useState('onyx');
+  const [selectedVoice, setSelectedVoice] = useState('');
   const [aiModels, setAiModels] = useState([]);
   const [availableVoices, setAvailableVoices] = useState([]);
 
@@ -30,6 +30,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
     try {
       const response = await api.ai.getAIModels();
       setAiModels(response.data.models);
+      setSelectedModel('gpt4o-mini');
     } catch (error) {
       console.error('Error fetching AI models:', error);
     }
@@ -39,6 +40,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
     try {
       const response = await api.ai.getAvailableVoices();
       setAvailableVoices(response.data.voices);
+      setSelectedVoice('onyx');
     } catch (error) {
       console.error('Error fetching available voices:', error);
     }

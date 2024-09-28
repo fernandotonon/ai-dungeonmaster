@@ -236,23 +236,25 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
         </ActionContainer>
 
         <StoryContainer elevation={2}>
-          {gameState.storyMessages.map((message, index) => (
+          {gameState.storyMessages.slice().reverse().map((message, index) => (
             <Message key={message.id} sender={message.sender} aiRole={gameState.aiRole}>
               <Typography variant="subtitle1">
                 <strong>{message.sender}:</strong> {message.content}
               </Typography>
               <IconButton 
-                onClick={() => handleGenerateAudio(index)}
+                onClick={() => handleGenerateAudio(gameState.storyMessages.length - index - 1)}
                 disabled={isGeneratingAudio}
               >
                 <VolumeUp />
               </IconButton>
-              <IconButton 
-                onClick={() => handleGenerateImage(index)}
-                disabled={isGeneratingImage}
-              >
-                <Image />
-              </IconButton>
+              {!message.imageFile && (
+                <IconButton 
+                  onClick={() => handleGenerateImage(gameState.storyMessages.length - index - 1)}
+                  disabled={isGeneratingImage}
+                >
+                  <Image />
+                </IconButton>
+              )}
               {message.imageFile && (
                 <ImageContainer>
                   <img 

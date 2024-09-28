@@ -16,20 +16,31 @@ import {
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
+import { useTranslation } from 'react-i18next'; 
 import api from '../services/api';
 import { getRandomBackground } from '../utils/backgroundUtils';
 import KidsModeToggle from '../controls/KidsModeToggle'; 
 import { useKidsMode } from '../KidsModeContext';
 
+// Supported languages
+const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
+
 const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) => {
+  const { t, i18n } = useTranslation();
+  const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
+    ? navigator.language.toLowerCase() 
+    : 'pt-br';
+
   const [backgroundImage, setBackgroundImage] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
-  const [imageStyle, setImageStyle] = useState('fantasy illustration');
+  const [kidsTheme, setKidsTheme] = useState('Fairy Tale Kingdom');
   const [selectedVoice, setSelectedVoice] = useState('');
   const [aiModels, setAiModels] = useState([]);
   const [availableVoices, setAvailableVoices] = useState([]);
+  const [language, setLanguage] = useState(systemLanguage); // Default language based on system language
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
+  const [imageStyle, setImageStyle] = useState(isKidsMode ? 'cartoon' : 'fantasy illustration');
 
   const UserInterfaceContainer = styled(Paper)(({ theme }) => ({
     display: 'flex',
@@ -53,6 +64,13 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
     overflowY: 'auto',
     backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
     borderRadius: '4px',
+    border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+  }));
+
+  const AlternatingListItem = styled(ListItem)(({ theme, index }) => ({
+    backgroundColor: index % 2 === 0 
+      ? (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)')
+      : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'),
   }));
 
   useEffect(() => {
@@ -60,6 +78,10 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
     fetchAiModels();
     fetchAvailableVoices();
   }, []);
+
+  useEffect(() => {
+    i18n.changeLanguage(language.replace('-',''));  // Change the language based on selection
+  }, [language]); 
 
   const fetchAiModels = async () => {
     try {
@@ -75,7 +97,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
     try {
       const response = await api.ai.getAvailableVoices();
       setAvailableVoices(response.data.voices);
-      setSelectedVoice(isKidsMode?'fable':'onyx');
+      setSelectedVoice(isKidsMode ? 'fable' : 'onyx');
     } catch (error) {
       console.error('Error fetching available voices:', error);
     }
@@ -86,7 +108,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
       <ContentContainer>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h4" gutterBottom>
-            Welcome, {user.username}!
+            {t('welcome', { username: user.username })}  
           </Typography>
           <KidsModeToggle />
           {!isKidsMode && <IconButton onClick={toggleTheme} color="inherit">
@@ -94,29 +116,29 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
           </IconButton>}
         </Box>
         <Button onClick={onLogout} variant="contained" color="secondary">
-          Logout
+          {t('logout')}
         </Button>
 
         <Typography variant="h5" gutterBottom>
-          Your Games:
+          {t('yourGames')}
         </Typography>
         <GamesList>
-          {userGames.map((game) => (
-            <ListItem key={game._id} button onClick={() => onLoadGame(game._id)}>
+          {userGames.map((game, index) => (
+            <AlternatingListItem key={game._id} button onClick={() => onLoadGame(game._id)} index={index}>
               <ListItemText 
                 primary={game.title} 
                 secondary={new Date(game.updatedAt).toLocaleString()} 
               />
-            </ListItem>
+            </AlternatingListItem>
           ))}
         </GamesList>
 
         <Typography variant="h5" gutterBottom>
-          Start a new game:
+          {t('startNewGame')}
         </Typography>
         {!isKidsMode && 
           <FormControl fullWidth margin="normal">
-            <InputLabel>AI Model</InputLabel>
+            <InputLabel>{t('aiModel')}</InputLabel>
             <Select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
@@ -128,40 +150,70 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
           </FormControl>
         }
 
+        {/* Controls in a Single Line */}
+        <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>{t('imageStyle')}</InputLabel>
+            <Select
+              value={imageStyle}
+              onChange={(e) => setImageStyle(e.target.value)}
+            >
+              {['realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
+                'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
+                <MenuItem key={style} value={style}>{style}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>{t('voice')}</InputLabel>
+            <Select
+              value={selectedVoice}
+              onChange={(e) => setSelectedVoice(e.target.value)}
+            >
+              {availableVoices.map(voice => (
+                <MenuItem key={voice} value={voice}>{voice}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>{t('language')}</InputLabel>
+            <Select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
+              {supportedLanguages.map(lang => (
+                <MenuItem key={lang} value={lang}>
+                  {lang.toUpperCase()}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
         <FormControl fullWidth margin="normal">
-          <InputLabel>Image Style</InputLabel>
+          <InputLabel>{t('theme')}</InputLabel>
           <Select
-            value={imageStyle}
-            onChange={(e) => setImageStyle(e.target.value)}
+            value={kidsTheme}
+            onChange={(e) => setKidsTheme(e.target.value)}
           >
-            {['realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
-              'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
-              <MenuItem key={style} value={style}>{style}</MenuItem>
+            {['Enchanted Forest Adventures', 'Space Exploration', 'Pirate Treasure Hunt', 
+              'Knight and Dragon Friend', 'Fairy Tale Kingdom'].map(style => (
+              <MenuItem key={style} value={style}>{t(style.toLowerCase().replace(/ /g, ''))}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Voice</InputLabel>
-          <Select
-            value={selectedVoice}
-            onChange={(e) => setSelectedVoice(e.target.value)}
-          >
-            {availableVoices.map(voice => (
-              <MenuItem key={voice} value={voice}>{voice}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Button 
+        {!isKidsMode && <Button 
           onClick={() => onInitGame('DM', selectedModel, imageStyle, selectedVoice)} 
           variant="contained" 
           color="primary"
           fullWidth
           style={{ marginTop: '20px' }}
         >
-          New Game as Dungeon Master
-        </Button>
+          {t('newGameDM')}
+        </Button>}
         <Button 
           onClick={() => onInitGame('Player', selectedModel, imageStyle, selectedVoice)} 
           variant="contained" 
@@ -169,7 +221,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
           fullWidth
           style={{ marginTop: '10px' }}
         >
-          New Game as Player
+          {`${t('newGame')} ${!isKidsMode ? t('asPlayer') : ""}`}
         </Button>
       </ContentContainer>
     </UserInterfaceContainer>

@@ -16,11 +16,13 @@ import { VolumeUp, Image, Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import { useKidsMode } from '../KidsModeContext';
+import { useTranslation } from 'react-i18next'; 
 import api from '../services/api';
 import ActionInput from '../controls/ActionInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
 
 const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) => {
+  const { t } = useTranslation(); 
   const [backgroundImage, setBackgroundImage] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -141,7 +143,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
       <ContentContainer>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h4" gutterBottom>
-            {gameState.title || 'Untitled Story'}
+            {gameState.title || t('untitled_story')}
           </Typography>
           {!isKidsMode && <IconButton onClick={toggleTheme} color="inherit">
             {darkMode ? <Brightness7 /> : <Brightness4 />}
@@ -151,7 +153,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
-              <InputLabel>Image Style</InputLabel>
+              <InputLabel>{t('image_style')}</InputLabel>
               <Select
                 value={gameState.imageStyle}
                 onChange={(e) => handleUpdatePreferences(e.target.value, gameState.voice)}
@@ -165,7 +167,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
           </Grid>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
-              <InputLabel>Voice</InputLabel>
+              <InputLabel>{t('voice')}</InputLabel>
               <Select
                 value={gameState.voice}
                 onChange={(e) => handleUpdatePreferences(gameState.imageStyle, e.target.value)}
@@ -180,20 +182,20 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
 
         <Box display="flex" justifyContent="space-around" alignItems="center" marginTop="10px">
           <Typography variant="body1" gutterBottom>
-            Your Role: {gameState.playerRole}
+          {t('your_role')}: {gameState.playerRole}
           </Typography>
           <Typography variant="body1" gutterBottom>
-            AI Role: {gameState.aiRole}
+          {t('ai_role')}: {gameState.aiRole}
           </Typography>
         </Box>
         {!isKidsMode && 
           <Typography variant="body1" gutterBottom>
-            AI Model: {gameState.aiModel}
+            {t('ai_model')}: {gameState.aiModel}
           </Typography>
         }
         {!isKidsMode && 
           <Typography variant="body1" gutterBottom>
-            Players: {gameState.players.join(', ')}
+            {t('players')}: {gameState.players.join(', ')}
           </Typography>
         }
 
@@ -201,7 +203,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
           <Grid container spacing={2} style={{ marginTop: '20px' }}>
             <Grid item xs={12} sm={8}>
               <TextField
-                label="Player Name"
+                label={t('player_name')}
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 fullWidth
@@ -214,7 +216,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
                 color="secondary"
                 fullWidth
               >
-                Add Player
+                {t('add_player')}
               </Button>
             </Grid>
           </Grid>
@@ -265,7 +267,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
           color="secondary"
           style={{ marginTop: '20px' }}
         >
-          Back to Game List
+          {t('back_to_game_list')}
         </Button>
       </ContentContainer>
     </GameContainer>

@@ -6,11 +6,12 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ThemeProvider } from './ThemeContext';
 import { KidsModeProvider } from './KidsModeContext';
+import './i18n';  
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <ThemeProvider >
+    <ThemeProvider>
       <KidsModeProvider>
         <CssBaseline />
         <App />

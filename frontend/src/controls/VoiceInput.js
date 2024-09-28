@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button, CircularProgress, Box, Typography } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
+import { useTranslation } from 'react-i18next'; // Import the translation hook
 import api from '../services/api';
 
 const VoiceInput = ({ onTranscript, setError, gameState }) => {
+  const { t } = useTranslation(); // Initialize the translation hook
   const maxTime = 60;
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,7 +49,7 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
 
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      setError('Failed to access microphone. Please check your permissions.');
+      setError(t('error_access_microphone')); 
     }
   };
 
@@ -69,7 +71,7 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
       onTranscript(transcript);
     } catch (error) {
       console.error('Error in speech to text conversion:', error);
-      setError('Failed to convert speech to text. Please try again.');
+      setError(t('error_speech_to_text')); 
     } finally {
       setIsProcessing(false);
     }
@@ -93,15 +95,13 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
   if (isProcessing) {
     buttonContent = <CircularProgress size={24} />;
   } else if (isRecording) {
-    buttonContent = timeLeft <= 10 ? `Stop (${timeLeft})` : 'Stop';
+    buttonContent = timeLeft <= 10 ? `${t('stop')} (${timeLeft})` : t('stop'); 
   } else {
-    buttonContent = 'Record';
+    buttonContent = t('record'); 
   }
 
   return (
     <Box display="flex" flexDirection="column" alignItems="center">
-
-      
       <Button
         variant="contained"
         color={isRecording ? 'secondary' : 'primary'}
@@ -114,7 +114,7 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
       </Button>
       {isRecording && (
         <Typography variant="body2" color="textSecondary">
-          Time Left: {formatTime(timeLeft)}
+          {t('time_left')}: {formatTime(timeLeft)} 
         </Typography>
       )}
     </Box>

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { TextField, Button, Box } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { useTranslation } from 'react-i18next'; 
 import VoiceInput from './VoiceInput';
 
 const ActionContainer = styled(Box)(({ theme }) => ({
@@ -8,6 +9,7 @@ const ActionContainer = styled(Box)(({ theme }) => ({
 }));
 
 const ActionInput = ({ onSubmit, setError, gameState }) => {
+  const { t } = useTranslation(); 
   const [action, setAction] = useState('');
   const inputRef = useRef(null);
 
@@ -22,7 +24,7 @@ const ActionInput = ({ onSubmit, setError, gameState }) => {
   return (
     <ActionContainer>
       <TextField
-        label="Enter your action or narrative"
+        label={t('enter_action')} 
         multiline
         rows={4}
         value={action}
@@ -35,8 +37,9 @@ const ActionInput = ({ onSubmit, setError, gameState }) => {
           onClick={handleSubmit} 
           variant="contained" 
           color="primary"
+          style={{ marginBottom: '10px' }}
         >
-          Submit Action
+          {t('submit_action')} 
         </Button>
         <VoiceInput 
           onTranscript={(text) => {

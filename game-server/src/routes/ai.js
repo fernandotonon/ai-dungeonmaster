@@ -59,7 +59,7 @@ router.post('/story', verifyToken, async (req, res) => {
     });
     let aiResponse = response.data.generated_text.trim();
     
-    aiResponse = aiResponse.replace(/^(Player:|DM:)\s*/i, '');
+    aiResponse = aiResponse.replace(/^(Player:|DM:|\*\*DM:\*\*)\s*/i, '');
     game.storyMessages.push({ sender: game.aiRole, content: aiResponse });
 
     await game.save();

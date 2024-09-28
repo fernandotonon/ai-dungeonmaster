@@ -37,7 +37,7 @@ const getOrCreateAudioFile = async (gameId, text, audioBuffer = null) => {
 
 router.post('/story', verifyToken, async (req, res) => {
   try {
-    const { gameId, action, sender } = req.body;
+    const { gameId, action, sender, isKidsMode } = req.body;
     
     if (!gameId) {
       return res.status(400).json({ error: 'Game ID is required' });
@@ -54,7 +54,8 @@ router.post('/story', verifyToken, async (req, res) => {
     
     const response = await axios.post('http://ai-engine:5000/generate', {
       prompt: aiPrompt,
-      model: game.aiModel
+      model: game.aiModel,
+      isKidsMode
     });
     let aiResponse = response.data.generated_text.trim();
     

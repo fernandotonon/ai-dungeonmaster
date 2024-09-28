@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  TextField, 
+  TextField,
   Button, 
   Select, 
   MenuItem, 
@@ -17,12 +17,11 @@ import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import { useKidsMode } from '../KidsModeContext';
 import api from '../services/api';
-import VoiceInput from '../controls/VoiceInput';
+import ActionInput from '../controls/ActionInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
 
 const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) => {
   const [backgroundImage, setBackgroundImage] = useState('');
-  const [action, setAction] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -97,7 +96,6 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
     try {
       const response = await api.ai.submitStory(gameState._id, text, gameState.playerRole, isKidsMode);
       setGameState(response.data.gameState);
-      setAction('');
     } catch (error) {
       console.error('Error submitting action:', error);
       setError('Failed to submit action. Please try again.');
@@ -222,26 +220,11 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
           </Grid>
         )}
 
-        <ActionContainer>
-          <TextField
-            label="Enter your action or narrative"
-            multiline
-            rows={4}
-            value={action}
-            onChange={(e) => setAction(e.target.value)}
-            fullWidth
-          />
-          <Box display="flex" justifyContent="space-between" marginTop="10px">
-            <Button onClick={() => handleSubmitAction(action)} variant="contained" color="primary">
-              Submit Action
-            </Button>
-            <VoiceInput 
-              onTranscript={handleSubmitAction} 
-              setError={setError} 
-              gameState={gameState}
-            />
-          </Box>
-        </ActionContainer>
+        <ActionInput 
+          onSubmit={handleSubmitAction} 
+          setError={setError}
+          gameState={gameState}
+        />
 
         <StoryContainer elevation={2}>
           {gameState.storyMessages.slice().reverse().map((message, index) => (

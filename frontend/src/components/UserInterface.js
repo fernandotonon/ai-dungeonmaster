@@ -77,7 +77,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
     setBackgroundImage(getRandomBackground(isKidsMode));
     fetchAiModels();
     fetchAvailableVoices();
-  }, []);
+  }, [isKidsMode]);
 
   useEffect(() => {
     i18n.changeLanguage(language.replace('-',''));  // Change the language based on selection
@@ -192,7 +192,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
           </FormControl>
         </Box>
 
-        <FormControl fullWidth margin="normal">
+        {isKidsMode && <FormControl fullWidth margin="normal">
           <InputLabel>{t('theme')}</InputLabel>
           <Select
             value={kidsTheme}
@@ -203,7 +203,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
               <MenuItem key={style} value={style}>{t(style.toLowerCase().replace(/ /g, ''))}</MenuItem>
             ))}
           </Select>
-        </FormControl>
+        </FormControl>}
 
         {!isKidsMode && <Button 
           onClick={() => onInitGame('DM', selectedModel, imageStyle, selectedVoice)} 

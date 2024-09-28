@@ -5,7 +5,7 @@ import StopIcon from '@mui/icons-material/Stop';
 import api from '../services/api';
 
 const VoiceInput = ({ onTranscript, setError, gameState }) => {
-  const maxTime = 11;
+  const maxTime = 60;
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(maxTime); 

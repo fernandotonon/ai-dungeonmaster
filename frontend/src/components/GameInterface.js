@@ -15,8 +15,9 @@ import {
 import { VolumeUp, Image, Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
+import { useKidsMode } from '../KidsModeContext';
 import api from '../services/api';
-import VoiceInput from './VoiceInput';
+import VoiceInput from '../controls/VoiceInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
 
 const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) => {
@@ -26,6 +27,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const { darkMode, toggleTheme } = useTheme();
+  const { isKidsMode } = useKidsMode();
 
   const GameContainer = styled(Paper)(({ theme }) => ({
     padding: '20px',
@@ -69,7 +71,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
   });
 
   useEffect(() => {
-    setBackgroundImage(getRandomBackground());
+    setBackgroundImage(getRandomBackground(isKidsMode));
   }, []);
 
   const handleUpdatePreferences = async (newImageStyle, newVoice) => {
@@ -93,7 +95,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
 
   const handleSubmitAction = async (text) => {
     try {
-      const response = await api.ai.submitStory(gameState._id, text, gameState.playerRole);
+      const response = await api.ai.submitStory(gameState._id, text, gameState.playerRole, isKidsMode);
       setGameState(response.data.gameState);
       setAction('');
     } catch (error) {
@@ -106,7 +108,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
     if (isGeneratingImage) return;
     setIsGeneratingImage(true);
     try {
-      const response = await api.ai.generateImage(gameState._id, messageIndex, gameState.imageStyle);
+      const response = await api.ai.generateImage(gameState._id, messageIndex, gameState.imageStyle, isKidsMode);
       const updatedGameState = { ...gameState };
       updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
       setGameState(updatedGameState);
@@ -143,9 +145,9 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
           <Typography variant="h4" gutterBottom>
             {gameState.title || 'Untitled Story'}
           </Typography>
-          <IconButton onClick={toggleTheme} color="inherit">
+          {!isKidsMode && <IconButton onClick={toggleTheme} color="inherit">
             {darkMode ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
+          </IconButton>}
         </Box>
         
         <Grid container spacing={2}>
@@ -178,20 +180,26 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
           </Grid>
         </Grid>
 
-        <Typography variant="body1" gutterBottom>
-          Your Role: {gameState.playerRole}
-        </Typography>
-        <Typography variant="body1" gutterBottom>
-          AI Role: {gameState.aiRole}
-        </Typography>
-        <Typography variant="body1" gutterBottom>
-          AI Model: {gameState.aiModel}
-        </Typography>
-        <Typography variant="body1" gutterBottom>
-          Players: {gameState.players.join(', ')}
-        </Typography>
+        <Box display="flex" justifyContent="space-around" alignItems="center" marginTop="10px">
+          <Typography variant="body1" gutterBottom>
+            Your Role: {gameState.playerRole}
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            AI Role: {gameState.aiRole}
+          </Typography>
+        </Box>
+        {!isKidsMode && 
+          <Typography variant="body1" gutterBottom>
+            AI Model: {gameState.aiModel}
+          </Typography>
+        }
+        {!isKidsMode && 
+          <Typography variant="body1" gutterBottom>
+            Players: {gameState.players.join(', ')}
+          </Typography>
+        }
 
-        {gameState.playerRole === 'DM' && (
+        {!isKidsMode && gameState.playerRole === 'DM' && (
           <Grid container spacing={2} style={{ marginTop: '20px' }}>
             <Grid item xs={12} sm={8}>
               <TextField

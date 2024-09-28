@@ -31,10 +31,11 @@ export const game = {
 };
 
 export const ai = {
-  submitStory: (gameId, action, sender) => api.post('/ai/story', { gameId, action, sender }),
+  submitStory: (gameId, action, sender, isKidsMode) => 
+    api.post('/ai/story', { gameId, action, sender, isKidsMode }),
   getAIModels: () => api.get('/ai/models'),
-  generateImage: (gameId, messageIndex, style) => 
-    api.post('/ai/generate-image', { gameId, messageIndex, style }),
+  generateImage: (gameId, messageIndex, style, isKidsMode) => 
+    api.post('/ai/generate-image', { gameId, messageIndex, style, isKidsMode }),
   generateAudio: (gameId, messageIndex, voice) => 
     api.post('/ai/generate-audio', { gameId, messageIndex, voice }),
   getAudioFile: (filename) => `${API_URL}/ai${filename}`,

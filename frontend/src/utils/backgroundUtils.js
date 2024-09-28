@@ -1,4 +1,4 @@
-export const backgroundImages = [
+const backgroundImages = [
     '/background-images/greek.webp',
     '/background-images/japan.webp',
     '/background-images/magical.webp',
@@ -8,9 +8,17 @@ export const backgroundImages = [
     '/background-images/space.webp',
     '/background-images/steampunk.webp',
     '/background-images/underwater.webp',
-  ];
-  
-  export const getRandomBackground = () => {
-    const randomIndex = Math.floor(Math.random() * backgroundImages.length);
-    return backgroundImages[randomIndex];
-  };
+];
+
+const kidsBackgroundImages = [
+    '/background-images/kids/castel.webp',
+    '/background-images/kids/dragon.webp',
+    '/background-images/kids/magical.webp',
+    '/background-images/kids/pirate.webp',
+    '/background-images/kids/space.webp',
+];
+
+export const getRandomBackground = (kids) => {
+    const randomIndex = Math.floor(Math.random() * (kids ? kidsBackgroundImages.length : backgroundImages.length));
+    return kids ? kidsBackgroundImages[randomIndex] : backgroundImages[randomIndex];
+};

@@ -81,7 +81,7 @@ router.get('/models', async (req, res) => {
 
 router.post('/generate-image', verifyToken, async (req, res) => {
   try {
-    const { gameId, messageIndex, style } = req.body;
+    const { gameId, messageIndex, style, isKidsMode } = req.body;
     
     if (!gameId) {
       return res.status(400).json({ error: 'Game ID is required' });
@@ -98,7 +98,8 @@ router.post('/generate-image', verifyToken, async (req, res) => {
     const response = await axios.post('http://ai-engine:5000/generate-image', { 
       contextPrompt,
       currentMessage: currentMessage.content,
-      style
+      style,
+      isKidsMode
     });
     
     const imageData = response.data.image;

@@ -37,7 +37,7 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ _id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1d' });
     
     // Set the token as an HTTP-only cookie
     res.cookie('token', token, {
@@ -60,7 +60,7 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/check', verifyToken, (req, res) => {
-  res.json({ user: { id: req.user.id, username: req.user.username } });
+  res.json({ user: { userId: req.user._id, username: req.user.username } });
 });
 
 module.exports = router;

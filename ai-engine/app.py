@@ -53,20 +53,51 @@ def generate_image():
     data = request.json
     context_prompt = data['contextPrompt']
     current_message = data['currentMessage']
-    style = data.get('style', 'realistic')  # Default to 'realistic' if not provided
+    is_kids_mode = data.get('isKidsMode', False)
+    style = data.get('style', 'cartoon')  # Default to 'cartoon' if not provided
     
     try:
-        # Generate a detailed image prompt based on the context and current message using gpt4o-mini
+        # Adjust the system message based on kids mode
+        system_message = (
+            "You are an AI that generates detailed image prompts based on story context. "
+            "Create a vivid, descriptive prompt that captures the scene, including relevant details from the context. "
+            "Focus on visual elements and maintain continuity with previous events. "
+            f"The prompt should be suitable for DALL-E 2 image generation. Apply a {style} art style to the image. "
+        )
+        
+        if is_kids_mode:
+            system_message += (
+                "As this is for a children's story, ensure all content is family-friendly and appropriate for young audiences. "
+                "Avoid any scary, violent, or adult themes. Focus on whimsical, colorful, and positive imagery. "
+                "Characters should be cute or friendly-looking. Scenes should be bright and cheerful. "
+            )
+        
+        # Generate a detailed image prompt
         detailed_prompt = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": f"You are an AI that generates detailed image prompts based on story context. Create a vivid, descriptive prompt that captures the scene, including relevant details from the context. Focus on visual elements and maintain continuity with previous events. The prompt should be suitable for DALL-E 2 image generation. Apply a {style} art style to the image."},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": f"Context:\n{context_prompt}\n\nCurrent action:\n{current_message}\n\nGenerate a detailed image prompt for this scene in {style} style:"}
             ],
             max_tokens=100
         )
         
         image_prompt = detailed_prompt.choices[0].message.content.strip()
+        
+        # Add a safety check for kids mode
+        if is_kids_mode:
+            safety_check = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a content moderator for children's content. Evaluate the following image prompt and determine if it's suitable for children. If it's not suitable, provide a modified, child-friendly version."},
+                    {"role": "user", "content": f"Image prompt: {image_prompt}\n\nIs this prompt suitable for children? If not, provide a modified version:"}
+                ],
+                max_tokens=100
+            )
+            
+            safety_response = safety_check.choices[0].message.content.strip()
+            if "not suitable" in safety_response.lower():
+                image_prompt = safety_response.split("Modified version:")[-1].strip()
         
         # Generate the image using the detailed prompt
         response = openai_client.images.generate(
@@ -104,20 +135,53 @@ def text_to_speech():
         logger.error(f"Error in text_to_speech: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-def generate_response(prompt, model):
+def generate_response(prompt, model, is_kids_mode=False):
     try:
         openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
+        
+        system_message = (
+            "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
+            "Respond appropriately based on the role specified in the prompt. "
+            "Keep your responses concise and relevant to the game context."
+        )
+        
+        if is_kids_mode:
+            system_message += (
+                " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. "
+                "Avoid any scary, violent, or adult themes. Focus on positive, educational, and fun experiences. "
+                "Use simple language and explain any complex concepts. Encourage teamwork, problem-solving, and creativity. "
+                "Make sure all characters and situations are suitable for children."
+            )
         
         response = openai_client.chat.completions.create(
             model=openai_model,
             messages=[
-                {"role": "system", "content": "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. Respond appropriately based on the role specified in the prompt. Keep your responses concise and relevant to the game context."},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=500,
             temperature=0.7
         )
-        return response.choices[0].message.content.strip()
+        
+        generated_text = response.choices[0].message.content.strip()
+        
+        if is_kids_mode:
+            # Additional safety check for kids mode
+            safety_check = openai_client.chat.completions.create(
+                model=openai_model,
+                messages=[
+                    {"role": "system", "content": "You are a content moderator for children's content. Evaluate the following text and determine if it's suitable for children. If it's not suitable, provide a modified, child-friendly version."},
+                    {"role": "user", "content": f"Text: {generated_text}\n\nIs this text suitable for children? If not, provide a modified version:"}
+                ],
+                max_tokens=500,
+                temperature=0.5
+            )
+            
+            safety_response = safety_check.choices[0].message.content.strip()
+            if "not suitable" in safety_response.lower():
+                generated_text = safety_response.split("Modified version:")[-1].strip()
+        
+        return generated_text
     except Exception as e:
         logger.error(f"Error generating {model} response: {str(e)}")
         raise
@@ -127,11 +191,12 @@ def generate_text():
     data = request.json
     prompt = data['prompt']
     model = data.get('model', 'gpt4o-mini')  # Default to GPT-4o-mini if not specified
+    is_kids_mode = data.get('isKidsMode', False)  # Get the kids mode status
     
     try:
-        logger.info(f"Generating text with model: {model}")
+        logger.info(f"Generating text with model: {model}, Kids Mode: {is_kids_mode}")
         if model in MODEL_MAPPING:
-            generated_text = generate_response(prompt, model)
+            generated_text = generate_response(prompt, model, is_kids_mode)
         else:
             return jsonify({'error': 'Invalid model specified'}), 400
         

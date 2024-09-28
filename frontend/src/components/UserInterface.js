@@ -18,6 +18,8 @@ import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import api from '../services/api';
 import { getRandomBackground } from '../utils/backgroundUtils';
+import KidsModeToggle from '../controls/KidsModeToggle'; 
+import { useKidsMode } from '../KidsModeContext';
 
 const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) => {
   const [backgroundImage, setBackgroundImage] = useState('');
@@ -27,6 +29,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
   const [aiModels, setAiModels] = useState([]);
   const [availableVoices, setAvailableVoices] = useState([]);
   const { darkMode, toggleTheme } = useTheme();
+  const { isKidsMode } = useKidsMode();
 
   const UserInterfaceContainer = styled(Paper)(({ theme }) => ({
     display: 'flex',
@@ -53,7 +56,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
   }));
 
   useEffect(() => {
-    setBackgroundImage(getRandomBackground());
+    setBackgroundImage(getRandomBackground(isKidsMode));
     fetchAiModels();
     fetchAvailableVoices();
   }, []);
@@ -72,7 +75,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
     try {
       const response = await api.ai.getAvailableVoices();
       setAvailableVoices(response.data.voices);
-      setSelectedVoice('onyx');
+      setSelectedVoice(isKidsMode?'fable':'onyx');
     } catch (error) {
       console.error('Error fetching available voices:', error);
     }
@@ -85,9 +88,10 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
           <Typography variant="h4" gutterBottom>
             Welcome, {user.username}!
           </Typography>
-          <IconButton onClick={toggleTheme} color="inherit">
+          <KidsModeToggle />
+          {!isKidsMode && <IconButton onClick={toggleTheme} color="inherit">
             {darkMode ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
+          </IconButton>}
         </Box>
         <Button onClick={onLogout} variant="contained" color="secondary">
           Logout
@@ -110,17 +114,19 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
         <Typography variant="h5" gutterBottom>
           Start a new game:
         </Typography>
-        <FormControl fullWidth margin="normal">
-          <InputLabel>AI Model</InputLabel>
-          <Select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-          >
-            {aiModels.map(model => (
-              <MenuItem key={model} value={model}>{model.toUpperCase()}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {!isKidsMode && 
+          <FormControl fullWidth margin="normal">
+            <InputLabel>AI Model</InputLabel>
+            <Select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+            >
+              {aiModels.map(model => (
+                <MenuItem key={model} value={model}>{model.toUpperCase()}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        }
 
         <FormControl fullWidth margin="normal">
           <InputLabel>Image Style</InputLabel>

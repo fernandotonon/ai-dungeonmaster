@@ -14,6 +14,7 @@ import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import api from '../services/api';
 import { getRandomBackground } from '../utils/backgroundUtils';
+import { useKidsMode } from '../KidsModeContext';
 
 const BackgroundContainer = styled(Box)(({ theme }) => ({
   height: '100vh',
@@ -45,9 +46,10 @@ const AuthInterface = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [backgroundImage, setBackgroundImage] = useState('');
   const { darkMode, toggleTheme } = useTheme();
+  const { isKidsMode } = useKidsMode();
 
   useEffect(() => {
-    setBackgroundImage(getRandomBackground());
+    setBackgroundImage(getRandomBackground(isKidsMode));
   }, []);
 
   const handleSubmit = async (e) => {
@@ -75,9 +77,9 @@ const AuthInterface = ({ onLogin }) => {
           <Typography variant="h5" gutterBottom>
             {isRegistering ? 'Register' : 'Login'}
           </Typography>
-          <IconButton onClick={toggleTheme} color="inherit">
+          {!isKidsMode && <IconButton onClick={toggleTheme} color="inherit">
             {darkMode ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
+          </IconButton>}
         </div>
         <Form onSubmit={handleSubmit}>
           <TextField
@@ -106,7 +108,7 @@ const AuthInterface = ({ onLogin }) => {
             {isRegistering ? 'Register' : 'Login'}
           </Button>
         </Form>
-        <FormControlLabel
+        {!isKidsMode && <FormControlLabel
           control={
             <Switch
               checked={isRegistering}
@@ -115,7 +117,7 @@ const AuthInterface = ({ onLogin }) => {
             />
           }
           label={isRegistering ? 'Switch to Login' : 'Switch to Register'}
-        />
+        />}
         {error && (
           <Typography color="error" style={{ marginTop: '1rem' }}>
             {error}

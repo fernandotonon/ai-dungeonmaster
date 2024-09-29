@@ -22,7 +22,7 @@ import ActionInput from '../controls/ActionInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
 
 const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) => {
-  const { t } = useTranslation(); 
+  const { t, i18n } = useTranslation(); 
   const [backgroundImage, setBackgroundImage] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -96,7 +96,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
 
   const handleSubmitAction = async (text) => {
     try {
-      const response = await api.ai.submitStory(gameState._id, text, gameState.playerRole, isKidsMode);
+      const response = await api.ai.submitStory(gameState._id, text, gameState.playerRole, isKidsMode, i18n.language);
       setGameState(response.data.gameState);
     } catch (error) {
       console.error('Error submitting action:', error);
@@ -180,14 +180,14 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
           </Grid>
         </Grid>
 
-        <Box display="flex" justifyContent="space-around" alignItems="center" marginTop="10px">
+        {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="center" marginTop="10px">
           <Typography variant="body1" gutterBottom>
           {t('your_role')}: {gameState.playerRole}
           </Typography>
           <Typography variant="body1" gutterBottom>
           {t('ai_role')}: {gameState.aiRole}
           </Typography>
-        </Box>
+        </Box>}
         {!isKidsMode && 
           <Typography variant="body1" gutterBottom>
             {t('ai_model')}: {gameState.aiModel}

@@ -135,24 +135,34 @@ def text_to_speech():
         logger.error(f"Error in text_to_speech: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-def generate_response(prompt, model, is_kids_mode=False):
+def generate_response(prompt, model, is_kids_mode=False, language=''):
     try:
         openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
         
+        # Default system message
         system_message = (
             "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
             "Respond appropriately based on the role specified in the prompt. "
             "Keep your responses concise and relevant to the game context."
         )
         
+        # Add specific instructions for kids mode
         if is_kids_mode:
             system_message += (
                 " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. "
                 "Avoid any scary, violent, or adult themes. Focus on positive, educational, and fun experiences. "
                 "Use simple language and explain any complex concepts. Encourage teamwork, problem-solving, and creativity. "
                 "Make sure all characters and situations are suitable for children."
+                "Keep the game light-hearted and engaging, with a focus on exploration and discovery."
+                "Use positive reinforcement and encouragement to motivate players."
+                "Use short sentences and simple words to make the game easy to understand."
             )
         
+        # Add language-specific instructions
+        if language:
+            system_message += f" Respond in language ({language})."
+
+        # Send the prompt to the AI model
         response = openai_client.chat.completions.create(
             model=openai_model,
             messages=[
@@ -166,7 +176,7 @@ def generate_response(prompt, model, is_kids_mode=False):
         generated_text = response.choices[0].message.content.strip()
         
         if is_kids_mode:
-            # Additional safety check for kids mode
+            # Additional safety check for kids mode content
             safety_check = openai_client.chat.completions.create(
                 model=openai_model,
                 messages=[
@@ -180,11 +190,12 @@ def generate_response(prompt, model, is_kids_mode=False):
             safety_response = safety_check.choices[0].message.content.strip()
             if "not suitable" in safety_response.lower():
                 generated_text = safety_response.split("Modified version:")[-1].strip()
-        
+
         return generated_text
     except Exception as e:
         logger.error(f"Error generating {model} response: {str(e)}")
         raise
+
 
 @app.route('/generate', methods=['POST'])
 def generate_text():
@@ -192,11 +203,12 @@ def generate_text():
     prompt = data['prompt']
     model = data.get('model', 'gpt4o-mini')  # Default to GPT-4o-mini if not specified
     is_kids_mode = data.get('isKidsMode', False)  # Get the kids mode status
+    language = data.get('language', '')  
     
     try:
-        logger.info(f"Generating text with model: {model}, Kids Mode: {is_kids_mode}")
+        logger.info(f"Generating text with model: {model}, Kids Mode: {is_kids_mode}, Language: {language}")
         if model in MODEL_MAPPING:
-            generated_text = generate_response(prompt, model, is_kids_mode)
+            generated_text = generate_response(prompt, model, is_kids_mode, language)
         else:
             return jsonify({'error': 'Invalid model specified'}), 400
         

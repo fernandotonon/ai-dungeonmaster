@@ -31,8 +31,8 @@ export const game = {
 };
 
 export const ai = {
-  submitStory: (gameId, action, sender, isKidsMode) => 
-    api.post('/ai/story', { gameId, action, sender, isKidsMode }),
+  submitStory: (gameId, action, sender, isKidsMode, language) => 
+    api.post('/ai/story', { gameId, action, sender, isKidsMode, language}),
   getAIModels: () => api.get('/ai/models'),
   generateImage: (gameId, messageIndex, style, isKidsMode) => 
     api.post('/ai/generate-image', { gameId, messageIndex, style, isKidsMode }),

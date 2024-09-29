@@ -1,8 +1,8 @@
 const express = require('express');
 const verifyToken = require('../middleware/auth');
 const Game = require('../models/Game');
-const { storeFile, audioBucketName, imageBucketName } = require('../services/minioService');
 const router = express.Router();
+const axios = require('axios');
 
 router.get('/user-games', verifyToken, async (req, res) => {
   try {
@@ -15,7 +15,8 @@ router.get('/user-games', verifyToken, async (req, res) => {
 
 router.post('/init-game', verifyToken, async (req, res) => {
   try {
-    const { playerRole, aiModel, imageStyle, voice, title } = req.body;
+    const { playerRole, aiModel, imageStyle, voice, title, storyTheme, isKidsMode, language } = req.body;
+    console.log('req.body', req.body);
     const gameState = new Game({
       title,
       playerRole,
@@ -23,11 +24,27 @@ router.post('/init-game', verifyToken, async (req, res) => {
       aiModel,
       imageStyle,
       voice,
-      user: req.user._id
+      user: req.user._id,
+      storyTheme
     });
+    
+    if(storyTheme) {
+      const response = await axios.post('http://ai-engine:5000/generate', {
+        prompt: `Act as a dungeon master in a story about ${storyTheme}. Start the story. Use short sentences and simple language.`,
+        model: gameState.aiModel,
+        isKidsMode,
+        language
+      });
+      let aiResponse = response.data.generated_text.trim();
+      
+      aiResponse = aiResponse.replace(/^(Player:|DM:|\*\*DM:\*\*)\s*/i, '');
+      gameState.storyMessages.push({ sender: gameState.aiRole, content: aiResponse });
+    }
+  
     await gameState.save();
     res.json({ message: 'Game initialized', gameState });
   } catch (error) {
+    console.error('Error initializing game:', error);
     res.status(500).json({ error: 'Error initializing game' });
   }
 });

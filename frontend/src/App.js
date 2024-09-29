@@ -7,6 +7,7 @@ import GameInterface from './components/GameInterface';
 import ErrorAlert from './components/ErrorAlert';
 import api from './services/api';
 import { useTranslation } from 'react-i18next'; 
+import { useKidsMode } from './KidsModeContext';
 
 const AppContainer = styled(Container)(({ theme }) => ({
   maxWidth: '800px',
@@ -27,6 +28,7 @@ function App() {
   const [userGames, setUserGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const { t, i18n } = useTranslation();
+  const { isKidsMode } = useKidsMode();
 
   const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
@@ -78,15 +80,19 @@ function App() {
     setError(null);
   };
 
-  const handleInitGame = async ({role, selectedModel, imageStyle, selectedVoice, language}) => {
+  const handleInitGame = async ({role, selectedModel, imageStyle, selectedVoice, language, storyTheme, isKidsMode}) => {
     try {
       const response = await api.game.initGame(
-        role,
-        selectedModel,
-        imageStyle,
-        selectedVoice,
-        `${t('newGame')} ${userGames.length + 1}`,
-        language
+        {
+          playerRole: role, 
+          aiModel: selectedModel, 
+          imageStyle, 
+          voice: selectedVoice, 
+          title:`${t('newGame')} ${userGames.length + 1}`, 
+          storyTheme,
+          isKidsMode,
+          language
+        }
       );
       setGameState(response.data.gameState);
       setError(null);

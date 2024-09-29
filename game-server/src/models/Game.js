@@ -12,6 +12,7 @@ const GameSchema = new mongoose.Schema({
   }],
   players: [String],
   aiModel: String,
+  storyTheme: String,
   imageStyle: { type: String, default: 'hand-drawn' },
   voice: { type: String, default: 'onyx' },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

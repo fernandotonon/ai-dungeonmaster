@@ -22,8 +22,8 @@ export const auth = {
 
 export const game = {
   getUserGames: () => api.get('/game/user-games'),
-  initGame: (playerRole, aiModel, imageStyle, voice, title) => 
-    api.post('/game/init-game', { playerRole, aiModel, imageStyle, voice, title }),
+  initGame: ({playerRole, aiModel, imageStyle, voice, title, language, storyTheme, isKidsMode}) => 
+    api.post('/game/init-game', { playerRole, aiModel, imageStyle, voice, title, language, storyTheme, isKidsMode }),
   loadGame: (gameId) => api.get(`/game/load-game/${gameId}`),
   updatePreferences: (gameId, imageStyle, voice) => 
     api.post('/game/update-preferences', { gameId, imageStyle, voice }),

@@ -13,7 +13,7 @@ import {
   Box,
   Typography
 } from '@mui/material';
-import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { Brightness4, Brightness7, StoreMallDirectory } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import { useTranslation } from 'react-i18next'; 
@@ -215,7 +215,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
           {t('newGameDM')}
         </Button>}
         <Button 
-          onClick={() => onInitGame({role: 'Player', selectedModel, imageStyle, selectedVoice, language})} 
+          onClick={() => onInitGame({role: 'Player', selectedModel, imageStyle, selectedVoice, language, isKidsMode, storyTheme: kidsTheme})} 
           variant="contained" 
           color="primary"
           fullWidth

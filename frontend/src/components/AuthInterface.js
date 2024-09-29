@@ -15,6 +15,7 @@ import { useTheme } from '../ThemeContext';
 import api from '../services/api';
 import { getRandomBackground } from '../utils/backgroundUtils';
 import { useKidsMode } from '../KidsModeContext';
+import { useTranslation } from 'react-i18next'; 
 
 const BackgroundContainer = styled(Box)(({ theme }) => ({
   height: '100vh',
@@ -39,6 +40,7 @@ const Form = styled('form')(({ theme }) => ({
 }));
 
 const AuthInterface = ({ onLogin }) => {
+  const { t } = useTranslation(); 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
@@ -59,14 +61,14 @@ const AuthInterface = ({ onLogin }) => {
     try {
       if (isRegistering) {
         await api.auth.register(username, email, password);
-        setError('Registration successful. Please log in.');
+        setError(t('registration_successful'));
         setIsRegistering(false);
       } else {
         const response = await api.auth.login(username, password);
         onLogin(response.user);
       }
     } catch (error) {
-      setError(isRegistering ? 'Registration failed' : 'Login failed');
+      setError(isRegistering ? t('registration_failed') : t('login_failed'));
     }
   };
 
@@ -75,7 +77,7 @@ const AuthInterface = ({ onLogin }) => {
       <FormContainer elevation={3}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h5" gutterBottom>
-            {isRegistering ? 'Register' : 'Login'}
+          {isRegistering ? t('register') : t('login')}
           </Typography>
           {!isKidsMode && <IconButton onClick={toggleTheme} color="inherit">
             {darkMode ? <Brightness7 /> : <Brightness4 />}
@@ -83,13 +85,13 @@ const AuthInterface = ({ onLogin }) => {
         </div>
         <Form onSubmit={handleSubmit}>
           <TextField
-            label="Username"
+            label={t('username')}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
           <TextField
-            label="Password"
+            label={t('password')}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -97,7 +99,7 @@ const AuthInterface = ({ onLogin }) => {
           />
           {isRegistering && (
             <TextField
-              label="Email"
+              label={t('email')} 
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -105,7 +107,7 @@ const AuthInterface = ({ onLogin }) => {
             />
           )}
           <Button type="submit" variant="contained" color="primary">
-            {isRegistering ? 'Register' : 'Login'}
+          {isRegistering ? t('register') : t('login')}
           </Button>
         </Form>
         {!isKidsMode && <FormControlLabel
@@ -116,7 +118,7 @@ const AuthInterface = ({ onLogin }) => {
               color="primary"
             />
           }
-          label={isRegistering ? 'Switch to Login' : 'Switch to Register'}
+          label={isRegistering ? t('switch_to_login') : t('switch_to_register')} 
         />}
         {error && (
           <Typography color="error" style={{ marginTop: '1rem' }}>

@@ -206,7 +206,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
         </FormControl>}
 
         {!isKidsMode && <Button 
-          onClick={() => onInitGame('DM', selectedModel, imageStyle, selectedVoice)} 
+          onClick={() => onInitGame({role: 'DM', selectedModel, imageStyle, selectedVoice, language})} 
           variant="contained" 
           color="primary"
           fullWidth
@@ -215,7 +215,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
           {t('newGameDM')}
         </Button>}
         <Button 
-          onClick={() => onInitGame('Player', selectedModel, imageStyle, selectedVoice)} 
+          onClick={() => onInitGame({role: 'Player', selectedModel, imageStyle, selectedVoice, language})} 
           variant="contained" 
           color="primary"
           fullWidth

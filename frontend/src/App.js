@@ -6,6 +6,7 @@ import UserInterface from './components/UserInterface';
 import GameInterface from './components/GameInterface';
 import ErrorAlert from './components/ErrorAlert';
 import api from './services/api';
+import { useTranslation } from 'react-i18next'; 
 
 const AppContainer = styled(Container)(({ theme }) => ({
   maxWidth: '800px',
@@ -25,10 +26,16 @@ function App() {
   const [error, setError] = useState(null);
   const [userGames, setUserGames] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t, i18n } = useTranslation();
 
+  const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
+  const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
+    ? navigator.language.toLowerCase() 
+    : 'pt-br';
 
   useEffect(() => {
     checkLoginStatus();
+    i18n.changeLanguage(systemLanguage.replace('-','')); 
   }, []);
 
   const checkLoginStatus = async () => {
@@ -71,14 +78,15 @@ function App() {
     setError(null);
   };
 
-  const handleInitGame = async (role, selectedModel, imageStyle, selectedVoice) => {
+  const handleInitGame = async ({role, selectedModel, imageStyle, selectedVoice, language}) => {
     try {
       const response = await api.game.initGame(
         role,
         selectedModel,
         imageStyle,
         selectedVoice,
-        `New Game ${userGames.length + 1}`
+        `${t('newGame')} ${userGames.length + 1}`,
+        language
       );
       setGameState(response.data.gameState);
       setError(null);

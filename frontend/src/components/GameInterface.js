@@ -27,6 +27,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
   const [playerName, setPlayerName] = useState('');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState(null);  // To manage audio playback
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
 
@@ -125,12 +126,13 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
     try {
       const response = await api.ai.generateAudio(gameState._id, messageIndex, gameState.voice);
       const audioFile = response.data.audioFile;
-      const audio = new Audio(api.ai.getAudioFile(audioFile));
-      audio.play();
-      
-      const updatedGameState = { ...gameState };
-      updatedGameState.storyMessages[messageIndex].audioFile = audioFile;
-      setGameState(updatedGameState);
+
+      setCurrentAudio(api.ai.getAudioFile(audioFile)); // Set the current audio file for playback
+      setGameState(prevState => {
+        const updatedMessages = [...prevState.storyMessages];
+        updatedMessages[messageIndex].audioFile = audioFile;
+        return { ...prevState, storyMessages: updatedMessages };
+      });
     } catch (error) {
       console.error('Error generating audio:', error);
     } finally {
@@ -234,20 +236,26 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
               <Typography variant="subtitle1">
                 <strong>{message.sender}:</strong> {message.content}
               </Typography>
-              <IconButton 
-                onClick={() => handleGenerateAudio(gameState.storyMessages.length - index - 1)}
-                disabled={isGeneratingAudio}
-              >
-                <VolumeUp />
-              </IconButton>
-              {!message.imageFile && (
+              <Box display="flex" alignItems="center">
+              {message.audioFile && (
+                  <audio controls src={api.ai.getAudioFile(message.audioFile)} />
+              )}
+              {!message.audioFile && (
                 <IconButton 
-                  onClick={() => handleGenerateImage(gameState.storyMessages.length - index - 1)}
-                  disabled={isGeneratingImage}
+                  onClick={() => handleGenerateAudio(gameState.storyMessages.length - index - 1)}
+                  disabled={isGeneratingAudio}
                 >
-                  <Image />
+                  <VolumeUp />
                 </IconButton>
               )}
+              {!message.imageFile && <IconButton 
+                    onClick={() => handleGenerateImage(gameState.storyMessages.length - index - 1)}
+                    disabled={isGeneratingImage}
+                    style={{ marginLeft: '15px' }}  // Add spacing between audio and image buttons
+                  >
+                    <Image />
+                  </IconButton>  }
+              </Box>
               {message.imageFile && (
                 <ImageContainer>
                   <img 

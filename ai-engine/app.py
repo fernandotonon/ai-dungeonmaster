@@ -156,6 +156,8 @@ def generate_response(prompt, model, is_kids_mode=False, language=''):
                 "Keep the game light-hearted and engaging, with a focus on exploration and discovery."
                 "Use positive reinforcement and encouragement to motivate players."
                 "Use short sentences and simple words to make the game easy to understand."
+                "Encourage players to use their imagination and creativity to solve problems."
+                "Use icons when it makes sense to help players understand the game."
             )
         
         # Add language-specific instructions

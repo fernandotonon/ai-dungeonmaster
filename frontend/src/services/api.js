@@ -43,7 +43,7 @@ export const ai = {
   getAvailableVoices: () => api.get('/ai/available-voices'),
   speechToText: (gameId, audioBlob) => {
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'audio.webm');
+    formData.append('audio', audioBlob, 'audio.wav');
     formData.append('gameId', gameId); // Adding the gameId in the form data
   
     return api.post('/ai/speech-to-text', formData);

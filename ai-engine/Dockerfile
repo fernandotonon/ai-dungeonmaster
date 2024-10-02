@@ -2,13 +2,20 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    espeak \
+    libespeak1 \
+    libportaudio2 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy just the requirements file first
 COPY requirements.txt .
 
 # Install dependencies
-# Use pip's cache dir and install with no-cache-dir for smaller image size
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+&& rm -rf /root/.cache/pip
 
 # Copy the rest of the application code
 COPY . .

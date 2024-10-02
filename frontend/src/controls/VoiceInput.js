@@ -65,8 +65,13 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
   const handleStop = async () => {
     setIsProcessing(true);
     const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+  
     try {
-      const response = await api.ai.speechToText(gameState._id, audioBlob);
+      // Convert WebM to WAV and ensure the correct sample rate (16000 Hz)
+      const wavBlob = await convertWebMToWav(audioBlob, 16000);
+  
+      // Send the resampled WAV blob to your API for transcription
+      const response = await api.ai.speechToText(gameState._id, wavBlob);
       const transcript = response.data.transcript;
       onTranscript(transcript);
     } catch (error) {
@@ -76,6 +81,94 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
       setIsProcessing(false);
     }
   };
+  
+  const convertWebMToWav = async (audioBlob, targetSampleRate = 16000) => {
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const audioContext = new AudioContext();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  
+    // Resample the audio to the target sample rate (16000 Hz)
+    const offlineContext = new OfflineAudioContext(
+      audioBuffer.numberOfChannels,
+      Math.floor(audioBuffer.length * (targetSampleRate / audioBuffer.sampleRate)),
+      targetSampleRate
+    );
+  
+    const source = offlineContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineContext.destination);
+    source.start(0);
+  
+    const resampledBuffer = await offlineContext.startRendering();
+  
+    // Convert the resampled audio buffer to a WAV Blob
+    const wavBlob = audioBufferToWavBlob(resampledBuffer, targetSampleRate);
+    return wavBlob;
+  };
+  
+  // Updated helper function to convert AudioBuffer to WAV Blob with target sample rate
+  const audioBufferToWavBlob = (audioBuffer, sampleRate = 16000) => {
+    const wavArrayBuffer = audioBufferToWav(audioBuffer, sampleRate);
+    return new Blob([wavArrayBuffer], { type: 'audio/wav' });
+  };
+  
+  // Updated function to convert an AudioBuffer to WAV with the correct sample rate
+  const audioBufferToWav = (audioBuffer, sampleRate = 16000) => {
+    const numOfChan = audioBuffer.numberOfChannels;
+    const length = audioBuffer.length * numOfChan * 2 + 44;
+    const buffer = new ArrayBuffer(length);
+    const view = new DataView(buffer);
+    const channels = [];
+    let sample;
+    let offset = 0;
+    let pos = 0;
+  
+    // Write WAV header
+    setUint32(0x46464952); // "RIFF"
+    setUint32(length - 8); // file length - 8
+    setUint32(0x45564157); // "WAVE"
+  
+    setUint32(0x20746d66); // "fmt " chunk
+    setUint32(16); // length = 16
+    setUint16(1); // PCM (uncompressed)
+    setUint16(numOfChan);
+    setUint32(sampleRate);
+    setUint32(sampleRate * 2 * numOfChan); // avg. bytes/sec
+    setUint16(numOfChan * 2); // block-align
+    setUint16(16); // 16-bit (hardcoded in this demo)
+  
+    setUint32(0x61746164); // "data" - chunk
+    setUint32(length - pos - 4); // chunk length
+  
+    // Write interleaved data
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+      channels.push(audioBuffer.getChannelData(i));
+    }
+  
+    while (pos < length) {
+      for (let i = 0; i < numOfChan; i++) {
+        sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+        sample = (0.5 + sample * 32767) | 0; // scale to 16-bit signed int
+        view.setInt16(pos, sample, true); // write 16-bit sample
+        pos += 2;
+      }
+      offset++; // next source sample
+    }
+  
+    function setUint16(data) {
+      view.setUint16(pos, data, true);
+      pos += 2;
+    }
+  
+    function setUint32(data) {
+      view.setUint32(pos, data, true);
+      pos += 4;
+    }
+  
+    return buffer;
+  };
+  
+  
 
   useEffect(() => {
     return () => {

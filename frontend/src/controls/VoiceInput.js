@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'; // Import the translation hook
 import api from '../services/api';
 
 const VoiceInput = ({ onTranscript, setError, gameState }) => {
-  const { t } = useTranslation(); // Initialize the translation hook
+  const { t, i18n } = useTranslation(); // Initialize the translation hook
   const maxTime = 60;
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -71,7 +71,7 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
       const wavBlob = await convertWebMToWav(audioBlob, 16000);
   
       // Send the resampled WAV blob to your API for transcription
-      const response = await api.ai.speechToText(gameState._id, wavBlob);
+      const response = await api.ai.speechToText({gameId: gameState._id, audioBlob: wavBlob, language: i18n.language});
       const transcript = response.data.transcript;
       onTranscript(transcript);
     } catch (error) {

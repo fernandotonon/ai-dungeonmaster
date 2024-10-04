@@ -21,7 +21,7 @@ import api from '../services/api';
 import ActionInput from '../controls/ActionInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
 
-const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) => {
+const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, availableVoices }) => {
   const { t, i18n } = useTranslation(); 
   const [backgroundImage, setBackgroundImage] = useState('');
   const [playerName, setPlayerName] = useState('');
@@ -124,7 +124,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
     if (isGeneratingAudio) return;
     setIsGeneratingAudio(true);
     try {
-      const response = await api.ai.generateAudio(gameState._id, messageIndex, gameState.voice);
+      const response = await api.ai.generateAudio({gameId: gameState._id, messageIndex, voice: gameState.voice, language: i18n.language});
       const audioFile = response.data.audioFile;
 
       setCurrentAudio(api.ai.getAudioFile(audioFile)); // Set the current audio file for playback
@@ -174,7 +174,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError }) 
                 value={gameState.voice}
                 onChange={(e) => handleUpdatePreferences(gameState.imageStyle, e.target.value)}
               >
-                {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map(voice => (
+                {availableVoices.map(voice => (
                   <MenuItem key={voice} value={voice.toLowerCase()}>{voice}</MenuItem>
                 ))}
               </Select>

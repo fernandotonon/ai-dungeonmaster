@@ -7,7 +7,7 @@ import tempfile
 import torch
 import torchaudio
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
-import pyttsx3
+from gtts import gTTS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,30 +28,29 @@ MODEL_MAPPING = {
     'gpt35-turbo': 'gpt-3.5-turbo'
 }
 
-AVAILABLE_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
 
 # Ensure CPU usage
 device = torch.device("cpu")
 torch.set_num_threads(4)  # Adjust this based on your CPU cores
 
 # Load Whisper model for local processing on CPU
-whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small").to(device)
-
-# Initialize pyttsx3 for TTS
-tts_engine = pyttsx3.init()
+whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-base")
+whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base").to(device)
 
 @app.route('/speech-to-text', methods=['POST'])
 def speech_to_text():
+    #get the language from the request headers
+    language = request.headers.get('language', 'en')
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_audio:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_audio:
             temp_audio.write(request.stream.read())
             temp_audio.flush()
 
         if USE_LOCAL_MODELS:
             # Local processing using Whisper-tiny on CPU
             waveform, sample_rate = torchaudio.load(temp_audio.name)
-            input_features = whisper_processor(waveform.squeeze().numpy(), sampling_rate=sample_rate, return_tensors="pt", language="pt-br").input_features
+            input_features = whisper_processor(waveform.squeeze().numpy(), sampling_rate=sample_rate, return_tensors="pt", language=language).input_features
             
             # Ensure input_features are on CPU
             input_features = input_features.to(device)
@@ -61,12 +60,13 @@ def speech_to_text():
             
             transcript = whisper_processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
         else:
-            # API processing
+            # API processing, the language must be on ISO-639-1 format e.g. pt-br must be converted to pt
             with open(temp_audio.name, 'rb') as audio_file:
                 transcript = openai_client.audio.transcriptions.create(
                     model="whisper-1", 
                     file=audio_file,
-                    response_format="text"
+                    response_format="text",
+                    language=language.split('-')[0]
                 )
         
         os.unlink(temp_audio.name)
@@ -81,17 +81,19 @@ def text_to_speech():
     data = request.json
     text = data['text']
     voice = data.get('voice', 'alloy')
-    
+    language = data.get('language', 'en')
+
     if voice not in AVAILABLE_VOICES:
         return jsonify({'error': 'Invalid voice selected'}), 400
     
     try:
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
         
-        if USE_LOCAL_MODELS:
-            # Local processing using pyttsx3
-            tts_engine.save_to_file(text, temp_file.name)
-            tts_engine.runAndWait()
+        if voice == 'google':
+            tts = gTTS(text=text, lang=language)
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            tts.save(temp_file.name)
+            return send_file(temp_file.name, mimetype="audio/mp3")
         else:
             # API processing
             response = openai_client.audio.speech.create(

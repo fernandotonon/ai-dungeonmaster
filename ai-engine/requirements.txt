@@ -4,5 +4,4 @@ transformers
 torch
 torchaudio
 openai>=1.0.0
-TTS
-pyttsx3
+gtts

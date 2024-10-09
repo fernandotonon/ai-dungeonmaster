@@ -29,6 +29,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const { t, i18n } = useTranslation();
   const { isKidsMode } = useKidsMode();
+  const [availableVoices, setAvailableVoices] = useState([]);
 
   const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
@@ -131,6 +132,8 @@ function App() {
           onLoadGame={handleLoadGame}
           onInitGame={handleInitGame}
           setError={setError}
+          availableVoices={availableVoices}
+          setAvailableVoices={setAvailableVoices}
         />
       )}
       {user && gameState && (
@@ -142,6 +145,7 @@ function App() {
             fetchUserGames();
           }}
           setError={setError}
+          availableVoices={availableVoices}
         />
       )}
     </AppContainer>

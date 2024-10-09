@@ -36,15 +36,16 @@ export const ai = {
   getAIModels: () => api.get('/ai/models'),
   generateImage: (gameId, messageIndex, style, isKidsMode) => 
     api.post('/ai/generate-image', { gameId, messageIndex, style, isKidsMode }),
-  generateAudio: (gameId, messageIndex, voice) => 
-    api.post('/ai/generate-audio', { gameId, messageIndex, voice }),
+  generateAudio: ({gameId, messageIndex, voice, language}) => 
+    api.post('/ai/generate-audio', { gameId, messageIndex, voice, language }),
   getAudioFile: (filename) => `${API_URL}/ai${filename}`,
   getImageFile: (filename) => `${API_URL}/ai${filename}`,
   getAvailableVoices: () => api.get('/ai/available-voices'),
-  speechToText: (gameId, audioBlob) => {
+  speechToText: ({gameId, audioBlob, language}) => {
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'audio.webm');
+    formData.append('audio', audioBlob, 'audio.wav');
     formData.append('gameId', gameId); // Adding the gameId in the form data
+    formData.append('language', language); 
   
     return api.post('/ai/speech-to-text', formData);
   },  

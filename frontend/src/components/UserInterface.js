@@ -25,7 +25,7 @@ import { useKidsMode } from '../KidsModeContext';
 // Supported languages
 const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
 
-const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) => {
+const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , availableVoices, setAvailableVoices}) => {
   const { t, i18n } = useTranslation();
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
     ? navigator.language.toLowerCase() 
@@ -36,7 +36,6 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame }) =>
   const [kidsTheme, setKidsTheme] = useState('Fairy Tale Kingdom');
   const [selectedVoice, setSelectedVoice] = useState('');
   const [aiModels, setAiModels] = useState([]);
-  const [availableVoices, setAvailableVoices] = useState([]);
   const [language, setLanguage] = useState(systemLanguage); // Default language based on system language
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();

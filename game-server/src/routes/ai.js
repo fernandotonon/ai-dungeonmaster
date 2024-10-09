@@ -124,7 +124,7 @@ router.post('/generate-image', verifyToken, async (req, res) => {
 router.post('/speech-to-text', verifyToken, upload.single('audio'), async (req, res) => {
   try {
     // Extract gameId from the form data
-    const { gameId } = req.body;
+    const { gameId, language } = req.body;
 
     // Get the audio buffer from multer's req.file
     const audioBuffer = req.file.buffer;
@@ -132,7 +132,8 @@ router.post('/speech-to-text', verifyToken, upload.single('audio'), async (req, 
     // Send the buffer to the AI engine
     const aiResponse = await axios.post('http://ai-engine:5000/speech-to-text', audioBuffer, {
       headers: {
-        'Content-Type': 'audio/webm',
+        'Content-Type': 'audio/wav',
+        'language': language.replace(/([a-z]{2})([a-z]{2})/i, '$1-$2')
       },
       responseType: 'json',
     });
@@ -154,7 +155,7 @@ router.post('/speech-to-text', verifyToken, upload.single('audio'), async (req, 
 
 router.post('/generate-audio', verifyToken, async (req, res) => {
   try {
-    const { gameId, messageIndex, voice } = req.body;
+    const { gameId, messageIndex, voice, language } = req.body;
     if (!gameId) {
       return res.status(400).json({ error: 'Game ID is required' });
     }
@@ -180,9 +181,9 @@ router.post('/generate-audio', verifyToken, async (req, res) => {
       return res.json({ audioFile: existingAudioFile });
     }
 
-    // If not, generate new audio
+    // If not, generate new audio, add - to language e.g. ptbr -> pt-br
     const response = await axios.post('http://ai-engine:5000/tts', 
-      { text: message.content, voice },
+      { text: message.content, voice, language: language.replace(/([a-z]{2})([a-z]{2})/i, '$1-$2') },
       { responseType: 'arraybuffer' }
     );
     

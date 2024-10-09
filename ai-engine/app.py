@@ -8,6 +8,8 @@ import torch
 import torchaudio
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from gtts import gTTS
+from google.generativeai import GenerativeModel, configure
+import google.generativeai as genai
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,7 +27,8 @@ MODEL_MAPPING = {
     'gpt4o-mini': 'gpt-4o-mini',
     'gpt4-turbo': 'gpt-4-turbo',
     'gpt4': 'gpt-4',
-    'gpt35-turbo': 'gpt-3.5-turbo'
+    'gpt35-turbo': 'gpt-3.5-turbo',
+    'gemini-pro': 'gemini-pro'  # Add Gemini Pro model
 }
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
@@ -37,6 +40,9 @@ torch.set_num_threads(4)  # Adjust this based on your CPU cores
 # Load Whisper model for local processing on CPU
 whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-base")
 whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base").to(device)
+
+# Configure Google AI
+configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 @app.route('/speech-to-text', methods=['POST'])
 def speech_to_text():
@@ -176,67 +182,83 @@ def generate_image():
 
 def generate_response(prompt, model, is_kids_mode=False, language=''):
     try:
-        openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
-        
-        # Default system message
-        system_message = (
-            "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
-            "Respond appropriately based on the role specified in the prompt. "
-            "Keep your responses concise and relevant to the game context."
-        )
-        
-        # Add specific instructions for kids mode
-        if is_kids_mode:
-            system_message += (
-                " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. "
-                "Avoid any scary, violent, or adult themes. Focus on positive, educational, and fun experiences. "
-                "Use simple language and explain any complex concepts. Encourage teamwork, problem-solving, and creativity. "
-                "Make sure all characters and situations are suitable for children."
-                "Keep the game light-hearted and engaging, with a focus on exploration and discovery."
-                "Use positive reinforcement and encouragement to motivate players."
-                "Use short sentences and simple words to make the game easy to understand."
-                "Encourage players to use their imagination and creativity to solve problems."
-                "Use icons when it makes sense to help players understand the game."
+        if model == 'gemini-pro':
+            # Gemini-specific processing
+            gemini_model = GenerativeModel('gemini-pro')
+            system_message = (
+                "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
+                "Respond appropriately based on the role specified in the prompt. "
+                "Keep your responses concise and relevant to the game context."
             )
+            if is_kids_mode:
+                system_message += " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. ..."
+            if language:
+                system_message += f" Respond in language ({language})."
+            
+            response = gemini_model.generate_content([system_message, prompt])
+            generated_text = response.text
+        else:
+            # Existing OpenAI processing
+            openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
         
-        # Add language-specific instructions
-        if language:
-            system_message += f" Respond in language ({language})."
-
-        # Send the prompt to the AI model
-        response = openai_client.chat.completions.create(
-            model=openai_model,
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=500,
-            temperature=0.7
-        )
-        
-        generated_text = response.choices[0].message.content.strip()
-        
-        if is_kids_mode:
-            # Additional safety check for kids mode content
-            safety_check = openai_client.chat.completions.create(
-                model=openai_model,
-                messages=[
-                    {"role": "system", "content": "You are a content moderator for children's content. Evaluate the following text and determine if it's suitable for children. If it's not suitable, provide a modified, child-friendly version."},
-                    {"role": "user", "content": f"Text: {generated_text}\n\nIs this text suitable for children? If not, provide a modified version:"}
-                ],
-                max_tokens=500,
-                temperature=0.5
+            # Default system message
+            system_message = (
+                "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
+                "Respond appropriately based on the role specified in the prompt. "
+                "Keep your responses concise and relevant to the game context."
             )
             
-            safety_response = safety_check.choices[0].message.content.strip()
-            if "not suitable" in safety_response.lower():
-                generated_text = safety_response.split("Modified version:")[-1].strip()
+            # Add specific instructions for kids mode
+            if is_kids_mode:
+                system_message += (
+                    " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. "
+                    "Avoid any scary, violent, or adult themes. Focus on positive, educational, and fun experiences. "
+                    "Use simple language and explain any complex concepts. Encourage teamwork, problem-solving, and creativity. "
+                    "Make sure all characters and situations are suitable for children."
+                    "Keep the game light-hearted and engaging, with a focus on exploration and discovery."
+                    "Use positive reinforcement and encouragement to motivate players."
+                    "Use short sentences and simple words to make the game easy to understand."
+                    "Encourage players to use their imagination and creativity to solve problems."
+                    "Use icons when it makes sense to help players understand the game."
+                )
+            
+            # Add language-specific instructions
+            if language:
+                system_message += f" Respond in language ({language})."
+
+            # Send the prompt to the AI model
+            response = openai_client.chat.completions.create(
+                model=openai_model,
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,
+                temperature=0.7
+            )
+            
+            generated_text = response.choices[0].message.content.strip()
+            
+            if is_kids_mode:
+                # Additional safety check for kids mode content
+                safety_check = openai_client.chat.completions.create(
+                    model=openai_model,
+                    messages=[
+                        {"role": "system", "content": "You are a content moderator for children's content. Evaluate the following text and determine if it's suitable for children. If it's not suitable, provide a modified, child-friendly version."},
+                        {"role": "user", "content": f"Text: {generated_text}\n\nIs this text suitable for children? If not, provide a modified version:"}
+                    ],
+                    max_tokens=500,
+                    temperature=0.5
+                )
+                
+                safety_response = safety_check.choices[0].message.content.strip()
+                if "not suitable" in safety_response.lower():
+                    generated_text = safety_response.split("Modified version:")[-1].strip()
 
         return generated_text
     except Exception as e:
         logger.error(f"Error generating {model} response: {str(e)}")
         raise
-
 
 @app.route('/generate', methods=['POST'])
 def generate_text():

@@ -5,3 +5,4 @@ torch
 torchaudio
 openai>=1.0.0
 gtts
+google-generativeai

@@ -195,11 +195,15 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
             {t('ai_model')}: {gameState.aiModel}
           </Typography>
         }
-        {!isKidsMode && 
+        {!isKidsMode && gameState.players.length > 0 && 
           <Typography variant="body1" gutterBottom>
             {t('players')}: {gameState.players.join(', ')}
           </Typography>
         }
+
+        <Typography variant="body1" gutterBottom>
+          {t('theme')}: {gameState.storyTheme}
+        </Typography>
 
         {!isKidsMode && gameState.playerRole === 'DM' && (
           <Grid container spacing={2} style={{ marginTop: '20px' }}>

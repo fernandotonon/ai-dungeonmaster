@@ -8,6 +8,10 @@ const backgroundImages = [
     '/background-images/space.webp',
     '/background-images/steampunk.webp',
     '/background-images/underwater.webp',
+    '/background-images/zombie.webp',
+    '/background-images/aliens.webp',
+    '/background-images/vampire.webp',
+    '/background-images/werewolves.webp',
 ];
 
 const kidsBackgroundImages = [
@@ -20,5 +24,5 @@ const kidsBackgroundImages = [
 
 export const getRandomBackground = (kids) => {
     const randomIndex = Math.floor(Math.random() * (kids ? kidsBackgroundImages.length : backgroundImages.length));
-    return kids ? kidsBackgroundImages[randomIndex] : backgroundImages[randomIndex];
+    return `${process.env.PUBLIC_URL}${kids ? kidsBackgroundImages[randomIndex] : backgroundImages[randomIndex]}`;
 };

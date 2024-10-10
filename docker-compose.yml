@@ -51,8 +51,22 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - WDS_SOCKET_PORT=0
+      - PUBLIC_URL=${PUBLIC_URL}
+      - API_URL=${API_URL}
     depends_on:
       - game-server
+
+  ngrok-backend:
+    image: ngrok/ngrok
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command: http --url baboon-neutral-mutt.ngrok-free.app game-server:3000
+    ports:
+      - "4040:4040"
+    depends_on:
+      - game-server
+    networks:
+      - default
 
   mongodb:
     image: mongo:4.4.18

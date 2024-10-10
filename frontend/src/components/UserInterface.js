@@ -13,7 +13,7 @@ import {
   Box,
   Typography
 } from '@mui/material';
-import { Brightness4, Brightness7, StoreMallDirectory } from '@mui/icons-material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import { useTranslation } from 'react-i18next'; 
@@ -33,13 +33,32 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
 
   const [backgroundImage, setBackgroundImage] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
-  const [kidsTheme, setKidsTheme] = useState('Fairy Tale Kingdom');
   const [selectedVoice, setSelectedVoice] = useState('');
   const [aiModels, setAiModels] = useState([]);
   const [language, setLanguage] = useState(systemLanguage); // Default language based on system language
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
   const [imageStyle, setImageStyle] = useState(isKidsMode ? 'cartoon' : 'fantasy illustration');
+  const [storyTheme, setStoryTheme] = useState(isKidsMode ? 'Fairy Tale Kingdom' : 'Western');
+  const kidsThemes = ['Enchanted Forest Adventures', 'Space Exploration', 'Pirate Treasure Hunt', 
+    'Knight and Dragon Friend', 'Fairy Tale Kingdom'];
+  const adultThemes = [
+    'Alien',
+    'Cyberpunk',
+    'Dark Fantasy',
+    'Feudal Japan/Samurai',
+    'Medieval Fantasy',
+    'Mythology/Folklore',
+    'Pirate/High Seas Adventure',
+    'Post-Apocalyptic',
+    'Sci-Fi',
+    'Space Opera',
+    'Steampunk',
+    'Underwater Adventure',
+    'Vampire',
+    'Western',
+    'Zombie'
+  ];
 
   const UserInterfaceContainer = styled(Paper)(({ theme }) => ({
     display: 'flex',
@@ -191,21 +210,21 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
           </FormControl>
         </Box>
 
-        {isKidsMode && <FormControl fullWidth margin="normal">
+         <FormControl fullWidth margin="normal">
           <InputLabel>{t('theme')}</InputLabel>
           <Select
-            value={kidsTheme}
-            onChange={(e) => setKidsTheme(e.target.value)}
+            value={storyTheme}
+            onChange={(e) => setStoryTheme(e.target.value)}
           >
-            {['Enchanted Forest Adventures', 'Space Exploration', 'Pirate Treasure Hunt', 
-              'Knight and Dragon Friend', 'Fairy Tale Kingdom'].map(style => (
-              <MenuItem key={style} value={style}>{t(style.toLowerCase().replace(/ /g, ''))}</MenuItem>
-            ))}
+            {(isKidsMode ? kidsThemes : adultThemes).map(style => {
+              return (
+              <MenuItem key={style} value={style}>{t(style.toLowerCase().replace(/ /g, '').replace(/\//g, '').replace(/-/g, ''))}</MenuItem>
+            )})}
           </Select>
-        </FormControl>}
+        </FormControl>
 
         {!isKidsMode && <Button 
-          onClick={() => onInitGame({role: 'DM', selectedModel, imageStyle, selectedVoice, language})} 
+          onClick={() => onInitGame({role: 'DM', selectedModel, imageStyle, selectedVoice, language, isKidsMode})} 
           variant="contained" 
           color="primary"
           fullWidth
@@ -214,7 +233,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
           {t('newGameDM')}
         </Button>}
         <Button 
-          onClick={() => onInitGame({role: 'Player', selectedModel, imageStyle, selectedVoice, language, isKidsMode, storyTheme: kidsTheme})} 
+          onClick={() => onInitGame({role: 'Player', selectedModel, imageStyle, selectedVoice, language, isKidsMode, storyTheme})} 
           variant="contained" 
           color="primary"
           fullWidth

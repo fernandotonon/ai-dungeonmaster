@@ -43,7 +43,6 @@ const ActionInput = ({ onSubmit, setError, gameState }) => {
         </Button>
         <VoiceInput 
           onTranscript={(text) => {
-            setAction(text);
             onSubmit(text);
           }}
           setError={setError}

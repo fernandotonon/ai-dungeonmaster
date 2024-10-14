@@ -85,6 +85,7 @@ def generate_local_image():
         img_io = BytesIO()
         image.save(img_io, 'PNG')
         img_io.seek(0)
+        torch.cuda.empty_cache()
 
         return send_file(img_io, mimetype='image/png')
     except Exception as e:

@@ -40,18 +40,6 @@ function App() {
   useEffect(() => {
     checkLoginStatus();
     i18n.changeLanguage(systemLanguage.replace('-','')); 
-
-    const checkCookieAndRedirect = () => {
-      const cookies = document.cookie.split(';');
-      const abuseInterstitialCookie = cookies.find(cookie => cookie.trim().startsWith('abuse_interstitial=')) || sessionStorage.getItem('abuse_interstitial');
-      
-      if (!abuseInterstitialCookie) {
-        sessionStorage.setItem('abuse_interstitial', true);
-        window.location.href = 'https://baboon-neutral-mutt.ngrok-free.app';
-      }
-    };
-
-    checkCookieAndRedirect();
   }, []);
 
   const checkLoginStatus = async () => {

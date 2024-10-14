@@ -50,8 +50,18 @@ export const ai = {
     api.post('/ai/generate-image', { gameId, messageIndex, style, isKidsMode, theme }),
   generateAudio: ({gameId, messageIndex, voice, language}) => 
     api.post('/ai/generate-audio', { gameId, messageIndex, voice, language }),
-  getAudioFile: (filename) => `${API_URL}/ai${filename}`,
-  getImageFile: (filename) => `${API_URL}/ai${filename}`,
+  getImageFile: async (filename) => {
+      const response = await api.get(`/ai${filename}`, {
+        responseType: 'blob'
+      });
+      return URL.createObjectURL(response.data);
+  },
+  getAudioFile: async (filename) => {
+    const response = await api.get(`/ai${filename}`, {
+      responseType: 'blob'
+    });
+    return URL.createObjectURL(response.data);
+  },
   getAvailableVoices: () => api.get('/ai/available-voices'),
   speechToText: ({gameId, audioBlob, language}) => {
     const formData = new FormData();

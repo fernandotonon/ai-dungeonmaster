@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   TextField,
   Button, 
@@ -10,7 +10,8 @@ import {
   Typography,
   Paper,
   Grid2,
-  Box
+  Box,
+  CircularProgress
 } from '@mui/material';
 import { VolumeUp, Image, Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
@@ -30,7 +31,9 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const [currentAudio, setCurrentAudio] = useState(null);  // To manage audio playback
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
-
+  const [mediaUrls, setMediaUrls] = useState({ images: {}, audios: {} });
+  const [loadingFiles, setLoadingFiles] = useState(new Set());
+  
   const GameContainer = styled(Paper)(({ theme }) => ({
     padding: '20px',
     marginTop: '20px',
@@ -74,7 +77,44 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
 
   useEffect(() => {
     setBackgroundImage(getRandomBackground(isKidsMode));
+    return () => {
+      Object.values(mediaUrls.images).forEach(URL.revokeObjectURL);
+      Object.values(mediaUrls.audios).forEach(URL.revokeObjectURL);
+    };
   }, []);
+
+  const loadMediaFile = useCallback(async (fileType, fileName) => {
+    if (mediaUrls[fileType][fileName] || loadingFiles.has(fileName)) return;
+
+    setLoadingFiles(prev => new Set(prev).add(fileName));
+
+    try {
+      const url = await (fileType === 'images' 
+        ? api.ai.getImageFile(fileName)
+        : api.ai.getAudioFile(fileName));
+
+      setMediaUrls(prev => ({
+        ...prev,
+        [fileType]: { ...prev[fileType], [fileName]: url }
+      }));
+    } catch (error) {
+      console.error(`Error loading ${fileType} ${fileName}:`, error);
+    } finally {
+      setLoadingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(fileName);
+        return newSet;
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    gameState.storyMessages.forEach(message => {
+      if (message.imageFile) loadMediaFile('images', message.imageFile);
+      if (message.audioFile) loadMediaFile('audios', message.audioFile);
+    });
+  }, [gameState.storyMessages, loadMediaFile]);
+
 
   const handleUpdatePreferences = async (newImageStyle, newVoice) => {
     try {
@@ -112,6 +152,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
       const response = await api.ai.generateImage(gameState._id, messageIndex, gameState.imageStyle, isKidsMode, gameState.storyTheme);
       const updatedGameState = { ...gameState };
       updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
+      loadMediaFile('images', response.data.imageUrl)
       setGameState(updatedGameState);
     } catch (error) {
       console.error('Error generating image:', error);
@@ -127,7 +168,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
       const response = await api.ai.generateAudio({gameId: gameState._id, messageIndex, voice: gameState.voice, language: i18n.language});
       const audioFile = response.data.audioFile;
 
-      setCurrentAudio(api.ai.getAudioFile(audioFile)); // Set the current audio file for playback
+      loadMediaFile('audios', audioFile)
+      setCurrentAudio(audioFile); // Set the current audio file for playback
       setGameState(prevState => {
         const updatedMessages = [...prevState.storyMessages];
         updatedMessages[messageIndex].audioFile = audioFile;
@@ -271,7 +313,11 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
               </Typography>
               <Box display="flex" alignItems="center">
               {message.audioFile && (
-                  <audio controls src={api.ai.getAudioFile(message.audioFile)} />
+                loadingFiles.has(message.audioFile) ? (
+                  <CircularProgress size={24} />
+                ) : mediaUrls.audios[message.audioFile] ? (
+                  <audio controls src={mediaUrls.audios[message.audioFile]} />
+                ) : ""
               )}
               {!message.audioFile && (
                 <IconButton 
@@ -290,13 +336,17 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                   </IconButton>  }
               </Box>
               {message.imageFile && (
-                <ImageContainer>
-                  <img 
-                    src={api.ai.getImageFile(message.imageFile)} 
-                    alt="Generated scene" 
-                    style={{ maxWidth: '100%' }} 
-                  />
-                </ImageContainer>
+                loadingFiles.has(message.imageFile) ? (
+                  <CircularProgress size={24} />
+                ) : mediaUrls.images[message.imageFile] ? (
+                  <ImageContainer>
+                    <img 
+                      src={mediaUrls.images[message.imageFile]} 
+                      alt="Generated scene" 
+                      style={{ maxWidth: '100%' }} 
+                    />
+                  </ImageContainer>
+                ) : ""
               )}
             </Message>
           ))}

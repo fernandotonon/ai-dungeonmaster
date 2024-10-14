@@ -21,29 +21,22 @@ const corsOptions = {
     'https://192.168.18.3', 
     'https://fernandotonon.github.io'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
     credentials: true,
     optionsSuccessStatus: 204
 };
 
 // Middleware
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors(corsOptions));
-
+// Handle preflight requests for all routes
 app.options('*', cors(corsOptions));
-
-// Make sure this comes before any routes
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://fernandotonon.github.io');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  next();
-});
 
 // Routes
 app.use('/auth', authRoutes);
 app.use('/game', gameRoutes);
 app.use('/ai', aiRoutes);
+
 
 module.exports = app;

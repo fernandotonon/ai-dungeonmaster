@@ -60,11 +60,18 @@ const AuthInterface = ({ onLogin }) => {
 
     try {
       if (isRegistering) {
-        await api.auth.register(username, email, password);
+        const response = await api.auth.register(username, email, password);
+        if(response.token) {
+          sessionStorage.setItem('token', response.user.token);
+        }
         setError(t('registration_successful'));
         setIsRegistering(false);
       } else {
         const response = await api.auth.login(username, password);
+        // save token in session storage
+        if(response.user.token) {
+          sessionStorage.setItem('token', response.user.token);
+        }
         onLogin(response.user);
       }
     } catch (error) {

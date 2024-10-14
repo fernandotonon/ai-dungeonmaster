@@ -1,18 +1,16 @@
-version: '3.8'
-
 services:
-  ai-engine:
-    build:
-      context: ./ai-engine
-      dockerfile: Dockerfile
-    volumes:
-      - ./ai-engine:/app
-      - pip-cache:/root/.cache/pip
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    ports:
-      - "5000:5000"
+  # ai-engine:
+  #   build:
+  #     context: ./ai-engine
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./ai-engine:/app
+  #     - pip-cache:/root/.cache/pip
+  #   environment:
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #     - GEMINI_API_KEY=${GEMINI_API_KEY}
+  #   ports:
+  #     - "5000:5000"
 
   game-server:
     build:
@@ -34,7 +32,7 @@ services:
       - MINIO_IMAGE_BUCKET_NAME=image-files
       - JWT_SECRET=ai-dungeonmaster-secret
     depends_on:
-      - ai-engine
+      # - ai-engine
       - mongodb      
       - minio
 

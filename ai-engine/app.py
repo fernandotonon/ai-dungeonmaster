@@ -10,6 +10,13 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from gtts import gTTS
 from google.generativeai import GenerativeModel, configure
 import google.generativeai as genai
+from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler, AutoPipelineForText2Image
+from io import BytesIO
+from PIL import Image
+from diffusers import DiffusionPipeline
+from torch.cuda.amp import autocast
+import base64
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,27 +29,132 @@ USE_LOCAL_MODELS = True
 
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Check CUDA availability
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    logger.info("CUDA available: True")
+    logger.info(f"CUDA version: {torch.version.cuda}")
+else:
+    device = torch.device("cpu")
+    logger.info("CUDA available: False")
+
+torch.set_num_threads(4)  # Adjust this based on your CPU cores
+
+# Load Whisper model for local processing
+stt_device = torch.device("cpu")
+whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-base")
+whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base").to(stt_device)
+
+# Configure Google AI
+configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# load Llama
+# llama_tokenizer = AutoTokenizer.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-3B/", legacy=False)
+# llama_model = AutoModelForCausalLM.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-3B/", ignore_mismatched_sizes=True).to(device)
+
+# Load image generation models
+torch.cuda.empty_cache()
+pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float16, variant="fp16").to(device)
+# pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sdxl-turbo", torch_dtype=torch.float16).to(device)
+pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+pipe = pipe.to("cuda")
+# torch.cuda.empty_cache()
+# pipe_vid = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid", torch_dtype=torch.float16).to(device)
+
 MODEL_MAPPING = {
     'gpt4o': 'gpt-4o',
     'gpt4o-mini': 'gpt-4o-mini',
     'gpt4-turbo': 'gpt-4-turbo',
     'gpt4': 'gpt-4',
     'gpt35-turbo': 'gpt-3.5-turbo',
-    'gemini-pro': 'gemini-pro'  # Add Gemini Pro model
+    'gemini-pro': 'gemini-pro',
+    # 'llama-3.2-1B': 'llama-3.2-1B' 
 }
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
 
-# Ensure CPU usage
-device = torch.device("cpu")
-torch.set_num_threads(4)  # Adjust this based on your CPU cores
+@app.route('/generate-local-image', methods=['POST'])
+def generate_local_image():
+    data = request.get_json()
+    prompt = data.get('prompt', 'a beautiful landscape')
 
-# Load Whisper model for local processing on CPU
-whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-base")
-whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base").to(device)
+    try:
+        # Clear GPU cache before generating the image
+        torch.cuda.empty_cache()
+        image = pipe(prompt).images[0]
+        img_io = BytesIO()
+        image.save(img_io, 'PNG')
+        img_io.seek(0)
 
-# Configure Google AI
-configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        return send_file(img_io, mimetype='image/png')
+    except Exception as e:
+        logger.error(f"Error in generate_image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# @app.route('/convert-to-video', methods=['POST'])
+# def convert_to_video():
+#     # Get the image from the request
+#     file = request.files['image']
+#     image = Image.open(file)
+
+#     try:
+#         # Clear GPU cache to avoid memory fragmentation
+#         torch.cuda.empty_cache()
+
+#         # Convert the image to a video using img2vid on GPU
+#         with torch.cuda.amp.autocast():
+#             video_frames = pipe_vid(image, num_inference_steps=10, num_frames=3).frames
+
+#         # Clear GPU cache to avoid memory fragmentation
+#         torch.cuda.empty_cache()
+#         # Create a video from the generated frames
+#         video_path = "/tmp/generated_video.mp4"
+#         video_frames[0].save(
+#             video_path,
+#             save_all=True,
+#             append_images=video_frames[1:],
+#             duration=100,
+#             loop=0,
+#         )
+
+#         # Send the video file
+#         return send_file(video_path, mimetype='video/mp4')
+
+#     except Exception as e:
+#         logger.error(f"Error in convert_to_video: {str(e)}")
+#         return jsonify({'error': str(e)}), 500
+
+# @app.route('/generate-video', methods=['POST'])
+# def generate_video():
+#     # Clear GPU cache to avoid memory fragmentation
+#     torch.cuda.empty_cache()
+
+#     # Get the image from the request
+#     # Get the text prompt from the request
+#     data = request.get_json()
+#     prompt = data.get('prompt', 'a beautiful landscape')
+
+#     # Generate the image from the prompt
+#     image = pipe(prompt).images[0]
+
+#     # Clear GPU cache to avoid memory fragmentation
+#     torch.cuda.empty_cache()
+
+#     # Convert the image to a video using img2vid
+#     video_frames = pipe_vid(image, num_inference_steps=25, num_frames=10).frames
+
+#     # Create a video from the generated frames
+#     video_path = "/tmp/generated_video.mp4"
+#     video_frames[0].save(
+#         video_path,
+#         save_all=True,
+#         append_images=video_frames[1:],
+#         duration=100,
+#         loop=0,
+#     )
+
+#     # Send the video file
+#     return send_file(video_path, mimetype='video/mp4')
 
 @app.route('/speech-to-text', methods=['POST'])
 def speech_to_text():
@@ -59,7 +171,7 @@ def speech_to_text():
             input_features = whisper_processor(waveform.squeeze().numpy(), sampling_rate=sample_rate, return_tensors="pt", language=language).input_features
             
             # Ensure input_features are on CPU
-            input_features = input_features.to(device)
+            input_features = input_features.to(stt_device)
             
             with torch.no_grad():
                 predicted_ids = whisper_model.generate(input_features)
@@ -122,6 +234,8 @@ def generate_image():
     current_message = data['currentMessage']
     is_kids_mode = data.get('isKidsMode', False)
     style = data.get('style', 'cartoon')  # Default to 'cartoon' if not provided
+    negative_prompt = data.get('negative_prompt', 'blurry, bad art, poor quality')
+    theme = data.get('theme', '')
     
     try:
         # Adjust the system message based on kids mode
@@ -129,15 +243,21 @@ def generate_image():
             "You are an AI that generates detailed image prompts based on story context. "
             "Create a vivid, descriptive prompt that captures the scene, including relevant details from the context. "
             "Focus on visual elements and maintain continuity with previous events. "
-            f"The prompt should be suitable for DALL-E 2 image generation. Apply a {style} art style to the image. "
+            f"The prompt should be suitable for image generation. Apply a {style} art style to the image. "
         )
-        
+
+        if USE_LOCAL_MODELS:
+            system_message += "The prompt should be for SDXL Turbo model, max 77 tokens."
+
         if is_kids_mode:
             system_message += (
                 "As this is for a children's story, ensure all content is family-friendly and appropriate for young audiences. "
                 "Avoid any scary, violent, or adult themes. Focus on whimsical, colorful, and positive imagery. "
                 "Characters should be cute or friendly-looking. Scenes should be bright and cheerful. "
             )
+        
+        if theme:
+            system_message += f" The theme of the game is {theme}."
         
         # Generate a detailed image prompt
         detailed_prompt = openai_client.chat.completions.create(
@@ -166,15 +286,32 @@ def generate_image():
             if "not suitable" in safety_response.lower():
                 image_prompt = safety_response.split("Modified version:")[-1].strip()
         
-        # Generate the image using the detailed prompt
-        response = openai_client.images.generate(
-            model="dall-e-2",
-            prompt=image_prompt,
-            size="256x256",
-            response_format="b64_json",
-            n=1
-        )
-        image_data = response.data[0].b64_json
+        if USE_LOCAL_MODELS:
+            # Generate the image using the local SDXL Turbo model
+            torch.cuda.empty_cache()
+            image = pipe(
+                prompt=image_prompt,
+                negative_prompt=negative_prompt,
+                num_inference_steps=50, 
+                max_embeddings_multiples=2 ,
+                guidance_scale=7.5
+            ).images[0]
+
+            img_io = BytesIO()
+            image.save(img_io, 'PNG')
+            img_io.seek(0)
+            image_data = base64.b64encode(img_io.getvalue()).decode('utf-8')
+        else:
+            # Generate the image using the DALL-E API
+            response = openai_client.images.generate(
+                model="dall-e-2",
+                prompt=image_prompt,
+                size="256x256",
+                response_format="b64_json",
+                n=1
+            )
+            image_data = response.data[0].b64_json
+        
         return jsonify({'image': image_data, 'prompt': image_prompt})
     except Exception as e:
         logger.error(f"Error generating image: {str(e)}")
@@ -182,49 +319,48 @@ def generate_image():
 
 def generate_response(prompt, model, is_kids_mode=False, language=''):
     try:
+        system_message = (
+            "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
+            "Respond appropriately based on the role specified in the prompt. "
+            "Keep your responses concise and relevant to the game context."
+            "Respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)."
+        )
+
+        if is_kids_mode:
+            system_message += (
+                " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. "
+                "Avoid any scary, violent, or adult themes. Focus on positive, educational, and fun experiences. "
+                "Use simple language and explain any complex concepts. Encourage teamwork, problem-solving, and creativity. "
+                "Make sure all characters and situations are suitable for children."
+                "Keep the game light-hearted and engaging, with a focus on exploration and discovery."
+                "Use positive reinforcement and encouragement to motivate players."
+                "Use short sentences and simple words to make the game easy to understand."
+                "Encourage players to use their imagination and creativity to solve problems."
+                "Use icons when it makes sense to help players understand the game."
+            )        
+
+        if language:
+            system_message += f" Respond in language ({language})."
+
         if model == 'gemini-pro':
             # Gemini-specific processing
             gemini_model = GenerativeModel('gemini-pro')
-            system_message = (
-                "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
-                "Respond appropriately based on the role specified in the prompt. "
-                "Keep your responses concise and relevant to the game context."
-            )
-            if is_kids_mode:
-                system_message += " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. ..."
-            if language:
-                system_message += f" Respond in language ({language})."
             
             response = gemini_model.generate_content([system_message, prompt])
             generated_text = response.text
+        elif model == 'llama-3.2-1B':
+            # Llama-specific processing
+            input_text = f"{system_message}\n\nUser: {prompt}\n\nAssistant:"
+            input_ids = llama_tokenizer.encode(input_text, return_tensors="pt").to(device)
+            
+            with torch.no_grad():
+                output = llama_model.generate(input_ids, max_length=500, temperature=0.7)
+            
+            generated_text = llama_tokenizer.decode(output[0], skip_special_tokens=True)
+            generated_text = generated_text.split("Assistant:")[-1].strip()
         else:
             # Existing OpenAI processing
             openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')
-        
-            # Default system message
-            system_message = (
-                "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
-                "Respond appropriately based on the role specified in the prompt. "
-                "Keep your responses concise and relevant to the game context."
-            )
-            
-            # Add specific instructions for kids mode
-            if is_kids_mode:
-                system_message += (
-                    " As this is a game for children, ensure all content is family-friendly and appropriate for young audiences. "
-                    "Avoid any scary, violent, or adult themes. Focus on positive, educational, and fun experiences. "
-                    "Use simple language and explain any complex concepts. Encourage teamwork, problem-solving, and creativity. "
-                    "Make sure all characters and situations are suitable for children."
-                    "Keep the game light-hearted and engaging, with a focus on exploration and discovery."
-                    "Use positive reinforcement and encouragement to motivate players."
-                    "Use short sentences and simple words to make the game easy to understand."
-                    "Encourage players to use their imagination and creativity to solve problems."
-                    "Use icons when it makes sense to help players understand the game."
-                )
-            
-            # Add language-specific instructions
-            if language:
-                system_message += f" Respond in language ({language})."
 
             # Send the prompt to the AI model
             response = openai_client.chat.completions.create(
@@ -295,4 +431,4 @@ def health_check():
 
 if __name__ == '__main__':
     logger.info("Starting the Flask app...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)

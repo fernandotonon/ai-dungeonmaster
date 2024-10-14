@@ -29,7 +29,7 @@ router.post('/init-game', verifyToken, async (req, res) => {
     });
     
     if(storyTheme) {
-      const response = await axios.post('http://ai-engine:5000/generate', {
+      const response = await axios.post('http://192.168.18.3:5000/generate', {
         prompt: `Act as a dungeon master in a story about ${storyTheme}. Start the story. Use short sentences and simple language.`,
         model: gameState.aiModel,
         isKidsMode,

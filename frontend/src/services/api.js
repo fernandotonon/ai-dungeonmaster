@@ -7,6 +7,18 @@ const api = axios.create({
   withCredentials: true // Required to send cookies with requests
 });
 
+api.interceptors.request.use(config => {
+  config.headers['ngrok-skip-browser-warning'] = 'true'; // Set the header
+  // add token from session storage
+  const token = sessionStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = token;
+  }
+  return config;
+}, error => {
+  return Promise.reject(error);
+});
+
 export const auth = {
   register: (username, email, password) => api.post('/auth/register', { username, email, password }),
   login: async (username, password) => {
@@ -34,8 +46,8 @@ export const ai = {
   submitStory: (gameId, action, sender, isKidsMode, language) => 
     api.post('/ai/story', { gameId, action, sender, isKidsMode, language}),
   getAIModels: () => api.get('/ai/models'),
-  generateImage: (gameId, messageIndex, style, isKidsMode) => 
-    api.post('/ai/generate-image', { gameId, messageIndex, style, isKidsMode }),
+  generateImage: (gameId, messageIndex, style, isKidsMode, theme) => 
+    api.post('/ai/generate-image', { gameId, messageIndex, style, isKidsMode, theme }),
   generateAudio: ({gameId, messageIndex, voice, language}) => 
     api.post('/ai/generate-audio', { gameId, messageIndex, voice, language }),
   getAudioFile: (filename) => `${API_URL}/ai${filename}`,

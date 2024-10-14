@@ -43,11 +43,19 @@ router.post('/login', async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: true, 
-      sameSite: 'none',
+      sameSite: 'None',
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
 
-    res.json({ user: {userId: user._id, username: user.username }});
+    // Set the abuse_interstitial cookie
+    res.cookie('abuse_interstitial', 'baboon-neutral-mutt.ngrok-free.app', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      maxAge: 24 * 60 * 60 * 1000 // 1 day
+    });
+
+    res.json({ user: {userId: user._id, username: user.username, token }});
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

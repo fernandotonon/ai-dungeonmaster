@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 const verifyToken = (req, res, next) => {
-  const token = req.cookies.token;
+  const token = req.cookies?.token || req.session?.token || req.headers?.authorization;
 
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });

@@ -9,7 +9,7 @@ import {
   IconButton,
   Typography,
   Paper,
-  Grid,
+  Grid2,
   Box
 } from '@mui/material';
 import { VolumeUp, Image, Brightness4, Brightness7 } from '@mui/icons-material';
@@ -109,7 +109,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     if (isGeneratingImage) return;
     setIsGeneratingImage(true);
     try {
-      const response = await api.ai.generateImage(gameState._id, messageIndex, gameState.imageStyle, isKidsMode);
+      const response = await api.ai.generateImage(gameState._id, messageIndex, gameState.imageStyle, isKidsMode, gameState.storyTheme);
       const updatedGameState = { ...gameState };
       updatedGameState.storyMessages[messageIndex].imageFile = response.data.imageUrl;
       setGameState(updatedGameState);
@@ -140,6 +140,30 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     }
   };
 
+  const extractJsonContent = (message, key, defaultValue) => {
+    if( message.startsWith('```json')){
+      const jsonContent = message.split('```json')[1].split('```')[0];
+      return JSON.parse(jsonContent)[key] || defaultValue;
+    } else {
+      try {
+        const parsedMessage = JSON.parse(message);
+        if (parsedMessage && typeof parsedMessage === 'object' && parsedMessage.hasOwnProperty(key)) {
+          return parsedMessage[key];
+        }
+      } catch (error) {
+      }
+    }
+    return defaultValue;
+  }
+
+  const getMessageContent = (message) => {
+    return extractJsonContent(message, 'content', message);
+  }
+
+  const getMessageOptions = (message) => {
+    return extractJsonContent(message, 'options', []);
+  }
+
   return (
     <GameContainer elevation={3}>
       <ContentContainer>
@@ -152,8 +176,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
           </IconButton>}
         </Box>
         
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+        <Grid2 container spacing={2}>
+          <Grid2 item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>{t('image_style')}</InputLabel>
               <Select
@@ -166,8 +190,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
+          </Grid2>
+          <Grid2 item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>{t('voice')}</InputLabel>
               <Select
@@ -179,8 +203,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
 
         {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="center" marginTop="10px">
           <Typography variant="body1" gutterBottom>
@@ -206,16 +230,16 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
         </Typography>
 
         {!isKidsMode && gameState.playerRole === 'DM' && (
-          <Grid container spacing={2} style={{ marginTop: '20px' }}>
-            <Grid item xs={12} sm={8}>
+          <Grid2 container spacing={2} style={{ marginTop: '20px' }}>
+            <Grid2 item xs={12} sm={8}>
               <TextField
                 label={t('player_name')}
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 fullWidth
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </Grid2>
+            <Grid2 item xs={12} sm={4}>
               <Button 
                 onClick={handleAddPlayer} 
                 variant="contained" 
@@ -224,8 +248,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
               >
                 {t('add_player')}
               </Button>
-            </Grid>
-          </Grid>
+            </Grid2>
+          </Grid2>
         )}
 
         <ActionInput 
@@ -237,8 +261,13 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
         <StoryContainer elevation={2}>
           {gameState.storyMessages.slice().reverse().map((message, index) => (
             <Message key={message.id} sender={message.sender} aiRole={gameState.aiRole}>
+              {(index === 0) && getMessageOptions(message.content).map((option, index) => (
+                <Button key={index} onClick={() => handleSubmitAction(option)}>
+                  {option}
+                </Button>
+              ))}
               <Typography variant="subtitle1">
-                <strong>{message.sender}:</strong> {message.content}
+                <strong>{message.sender}:</strong> {getMessageContent(message.content)}
               </Typography>
               <Box display="flex" alignItems="center">
               {message.audioFile && (

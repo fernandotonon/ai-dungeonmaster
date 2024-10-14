@@ -52,7 +52,7 @@ router.post('/story', verifyToken, async (req, res) => {
     const prompt = game.storyMessages.map(msg => `${msg.sender}: ${msg.content}`).join('\n');
     const aiPrompt = `${prompt}\n\nAs the ${game.aiRole}, respond to this:`;
     
-    const response = await axios.post('http://ai-engine:5000/generate', {
+    const response = await axios.post('http://192.168.18.3:5000/generate', {
       prompt: aiPrompt,
       model: game.aiModel,
       isKidsMode,
@@ -73,7 +73,7 @@ router.post('/story', verifyToken, async (req, res) => {
 
 router.get('/models', async (req, res) => {
   try {
-    const response = await axios.get('http://ai-engine:5000/models');
+    const response = await axios.get('http://192.168.18.3:5000/models');
     res.json(response.data);
   } catch (error) {
     console.error('Error fetching AI models:', error);
@@ -83,7 +83,7 @@ router.get('/models', async (req, res) => {
 
 router.post('/generate-image', verifyToken, async (req, res) => {
   try {
-    const { gameId, messageIndex, style, isKidsMode } = req.body;
+    const { gameId, messageIndex, style, isKidsMode, theme } = req.body;
     
     if (!gameId) {
       return res.status(400).json({ error: 'Game ID is required' });
@@ -97,11 +97,12 @@ router.post('/generate-image', verifyToken, async (req, res) => {
     
     const contextPrompt = contextMessages.map(msg => `${msg.sender}: ${msg.content}`).join('\n');
     
-    const response = await axios.post('http://ai-engine:5000/generate-image', { 
+    const response = await axios.post('http://192.168.18.3:5000/generate-image', { 
       contextPrompt,
       currentMessage: currentMessage.content,
       style,
-      isKidsMode
+      isKidsMode,
+      theme
     });
     
     const imageData = response.data.image;
@@ -130,7 +131,7 @@ router.post('/speech-to-text', verifyToken, upload.single('audio'), async (req, 
     const audioBuffer = req.file.buffer;
 
     // Send the buffer to the AI engine
-    const aiResponse = await axios.post('http://ai-engine:5000/speech-to-text', audioBuffer, {
+    const aiResponse = await axios.post('http://192.168.18.3:5000/speech-to-text', audioBuffer, {
       headers: {
         'Content-Type': 'audio/wav',
         'language': language.replace(/([a-z]{2})([a-z]{2})/i, '$1-$2')
@@ -182,7 +183,7 @@ router.post('/generate-audio', verifyToken, async (req, res) => {
     }
 
     // If not, generate new audio, add - to language e.g. ptbr -> pt-br
-    const response = await axios.post('http://ai-engine:5000/tts', 
+    const response = await axios.post('http://192.168.18.3:5000/tts', 
       { text: message.content, voice, language: language.replace(/([a-z]{2})([a-z]{2})/i, '$1-$2') },
       { responseType: 'arraybuffer' }
     );
@@ -204,7 +205,7 @@ router.post('/generate-audio', verifyToken, async (req, res) => {
 
 router.get('/available-voices', async (req, res) => {
   try {
-    const response = await axios.get('http://ai-engine:5000/available-voices');
+    const response = await axios.get('http://192.168.18.3:5000/available-voices');
     res.json(response.data);
   } catch (error) {
     console.error('Error fetching available voices:', error);

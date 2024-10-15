@@ -10,16 +10,19 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from gtts import gTTS
 from google.generativeai import GenerativeModel, configure
 import google.generativeai as genai
-from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler, AutoPipelineForText2Image
+from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler, AutoPipelineForText2Image, StableDiffusion3Pipeline
 from io import BytesIO
 from PIL import Image
 from diffusers import DiffusionPipeline
 from torch.cuda.amp import autocast
 import base64
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from huggingface_hub import login
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+login(token=os.getenv("HUGGING_FACE_TOKEN"))
 
 app = Flask(__name__)
 CORS(app)
@@ -49,15 +52,16 @@ whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-
 configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # load Llama
-# llama_tokenizer = AutoTokenizer.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-3B/", legacy=False)
-# llama_model = AutoModelForCausalLM.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-3B/", ignore_mismatched_sizes=True).to(device)
+#llama_tokenizer = AutoTokenizer.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-1B/", legacy=False)
+#llama_model = AutoModelForCausalLM.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-1B/", ignore_mismatched_sizes=True).to(torch.device("cpu"))
 
 # Load image generation models
 torch.cuda.empty_cache()
+#pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3-medium-diffusers", torch_dtype=torch.float16, variant="fp16").to(device)
 pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float16, variant="fp16").to(device)
-# pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sdxl-turbo", torch_dtype=torch.float16).to(device)
 pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-pipe = pipe.to("cuda")
+pipe.enable_model_cpu_offload()
+pipe.to("cpu")
 # torch.cuda.empty_cache()
 # pipe_vid = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid", torch_dtype=torch.float16).to(device)
 
@@ -248,7 +252,7 @@ def generate_image():
         )
 
         if USE_LOCAL_MODELS:
-            system_message += "The prompt should be for SDXL Turbo model, max 77 tokens."
+            system_message += "The prompt should have a maximum of 77 tokens."
 
         if is_kids_mode:
             system_message += (
@@ -290,13 +294,16 @@ def generate_image():
         if USE_LOCAL_MODELS:
             # Generate the image using the local SDXL Turbo model
             torch.cuda.empty_cache()
+
             image = pipe(
                 prompt=image_prompt,
                 negative_prompt=negative_prompt,
-                num_inference_steps=50, 
-                max_embeddings_multiples=2 ,
+                num_inference_steps=100, 
+                max_embeddings_multiples=3,
                 guidance_scale=7.5
             ).images[0]
+
+            torch.cuda.empty_cache()  # Clear unused GPU memory
 
             img_io = BytesIO()
             image.save(img_io, 'PNG')

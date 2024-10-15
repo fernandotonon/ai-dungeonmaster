@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import ActionInput from '../controls/ActionInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
+import FullscreenImageViewer from './FullscreenImageViewer';
 
 const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, availableVoices }) => {
   const { t, i18n } = useTranslation(); 
@@ -33,7 +34,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const { isKidsMode } = useKidsMode();
   const [mediaUrls, setMediaUrls] = useState({ images: {}, audios: {} });
   const [loadingFiles, setLoadingFiles] = useState(new Set());
-  
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+
   const GameContainer = styled(Paper)(({ theme }) => ({
     padding: '20px',
     marginTop: '20px',
@@ -66,14 +68,12 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
       : theme.palette.mode === 'dark' ? 'rgba(0, 255, 0, 0.2)' : 'rgba(0, 255, 0, 0.1)',
   }));
 
-  const ImageContainer = styled(Box)({
-    maxWidth: '100%',
-    marginTop: '10px',
-  });
-
-  const ActionContainer = styled(Box)({
-    marginTop: '20px',
-  });
+  const ImageContainer = styled('div')`
+    cursor: pointer;
+    &:hover {
+      opacity: 0.8;
+    }
+  `;
 
   useEffect(() => {
     setBackgroundImage(getRandomBackground(isKidsMode));
@@ -205,6 +205,14 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const getMessageOptions = (message) => {
     return extractJsonContent(message, 'options', []);
   }
+
+  const handleImageClick = (imageUrl) => {
+    setFullscreenImage(imageUrl);
+  };
+
+  const handleCloseFullscreen = () => {
+    setFullscreenImage(null);
+  };
 
   return (
     <GameContainer elevation={3}>
@@ -339,7 +347,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 loadingFiles.has(message.imageFile) ? (
                   <CircularProgress size={24} />
                 ) : mediaUrls.images[message.imageFile] ? (
-                  <ImageContainer>
+                  <ImageContainer onClick={() => handleImageClick(mediaUrls.images[message.imageFile])}>
                     <img 
                       src={mediaUrls.images[message.imageFile]} 
                       alt="Generated scene" 
@@ -350,6 +358,11 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
               )}
             </Message>
           ))}
+          <FullscreenImageViewer 
+            open={!!fullscreenImage} 
+            onClose={handleCloseFullscreen} 
+            imageUrl={fullscreenImage} 
+          />
         </StoryContainer>
 
         <Button 

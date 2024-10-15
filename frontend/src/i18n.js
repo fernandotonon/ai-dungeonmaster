@@ -64,7 +64,8 @@ const resources = {
       switch_to_login: "Switch to Login",
       registration_successful: "Registration successful. Please log in.",
       registration_failed: "Registration failed",
-      login_failed: "Login failed"
+      login_failed: "Login failed",
+      title: "Title"
     }
   },
   ptbr: {
@@ -128,7 +129,8 @@ const resources = {
       switch_to_login: "Trocar para Entrar",
       registration_successful: "Registro bem-sucedido. Por favor, faça login.",
       registration_failed: "Falha no registro",
-      login_failed: "Falha no login"
+      login_failed: "Falha no login",
+      title: "Título"
     }
   },
   es: {
@@ -192,7 +194,8 @@ const resources = {
       switch_to_login: "Cambiar a Iniciar sesión",
       registration_successful: "Registro exitoso. Por favor, inicie sesión.",
       registration_failed: "Error en el registro",
-      login_failed: "Error en el inicio de sesión"
+      login_failed: "Error en el inicio de sesión",
+      title: "Título"
     }
   },
   de: {
@@ -256,7 +259,8 @@ const resources = {
       switch_to_login: "Zu Anmeldung wechseln",
       registration_successful: "Registrierung erfolgreich. Bitte melde dich an.",
       registration_failed: "Registrierung fehlgeschlagen",
-      login_failed: "Anmeldung fehlgeschlagen"
+      login_failed: "Anmeldung fehlgeschlagen",
+      title: "Titel"
     }
   },
   it: {
@@ -320,7 +324,8 @@ const resources = {
       switch_to_login: "Passa a Accesso",
       registration_successful: "Registrazione avvenuta con successo. Effettua il login.",
       registration_failed: "Registrazione fallita",
-      login_failed: "Accesso fallito"
+      login_failed: "Accesso fallito",
+      title: "Titolo"
     }
   },
   fr: {
@@ -384,7 +389,8 @@ const resources = {
       switch_to_login: "Passer à la connexion",
       registration_successful: "Inscription réussie. Veuillez vous connecter.",
       registration_failed: "Échec de l'inscription",
-      login_failed: "Échec de la connexion"
+      login_failed: "Échec de la connexion",
+      title: "Titre"
     }
   }
   // Add translations for other languages here

@@ -74,6 +74,26 @@ router.post('/update-preferences', verifyToken, async (req, res) => {
   }
 });
 
+router.put('/update-game', verifyToken, async (req, res) => {
+  try {
+    const { gameId, title, storyTheme } = req.body;
+    const updateFields = { updatedAt: new Date() };
+
+    if (title) updateFields.title = title;
+    if (storyTheme) updateFields.storyTheme = storyTheme;
+
+    const game = await Game.findOneAndUpdate(
+      { _id: gameId, user: req.user._id },
+      { $set: updateFields },
+      { new: true }
+    );
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    res.json({ gameState: game });
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating game' });
+  }
+});
+
 router.post('/add-player', verifyToken, async (req, res) => {
   try {
     const { playerName, gameId } = req.body;

@@ -234,7 +234,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 value={gameState.imageStyle}
                 onChange={(e) => handleUpdatePreferences(e.target.value, gameState.voice)}
               >
-                {['realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
+                {['photo-realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
                   'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
                   <MenuItem key={style} value={style}>{style}</MenuItem>
                 ))}

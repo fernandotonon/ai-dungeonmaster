@@ -82,7 +82,7 @@ function App() {
     setError(null);
   };
 
-  const handleInitGame = async ({role, selectedModel, imageStyle, selectedVoice, language, storyTheme, isKidsMode}) => {
+  const handleInitGame = async ({role, title, selectedModel, imageStyle, selectedVoice, language, storyTheme, isKidsMode}) => {
     try {
       const response = await api.game.initGame(
         {
@@ -90,7 +90,7 @@ function App() {
           aiModel: selectedModel, 
           imageStyle, 
           voice: selectedVoice, 
-          title:`${t('newGame')} ${userGames.length + 1}`, 
+          title: title || `${t('newGame')} ${userGames.length + 1}`, 
           storyTheme,
           isKidsMode,
           language
@@ -130,6 +130,7 @@ function App() {
           user={user}
           onLogout={handleLogout}
           userGames={userGames}
+          onUpdateGames={setUserGames}
           onLoadGame={handleLoadGame}
           onInitGame={handleInitGame}
           setError={setError}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Button, 
   Select, 
@@ -7,11 +7,10 @@ import {
   InputLabel, 
   List, 
   ListItem, 
-  ListItemText, 
   Paper,
   IconButton,
   Box,
-  Typography
+  Typography,
 } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
@@ -21,11 +20,22 @@ import api from '../services/api';
 import { getRandomBackground } from '../utils/backgroundUtils';
 import KidsModeToggle from '../controls/KidsModeToggle'; 
 import { useKidsMode } from '../KidsModeContext';
+import EditableGameTitle from '../controls/EditableGameTitleInput';
+import TextInput from '../controls/TextInput';
 
 // Supported languages
 const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
 
-const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , availableVoices, setAvailableVoices}) => {
+const UserInterface = ({ 
+  user, 
+  onLogout, 
+  userGames, 
+  onUpdateGames,
+  onLoadGame, 
+  onInitGame, 
+  availableVoices, 
+  setAvailableVoices
+}) => {
   const { t, i18n } = useTranslation();
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
     ? navigator.language.toLowerCase() 
@@ -38,6 +48,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
   const [language, setLanguage] = useState(systemLanguage); // Default language based on system language
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
+  const newGameTitleRef = useRef(null);
   const [imageStyle, setImageStyle] = useState(isKidsMode ? 'cartoon' : 'fantasy illustration');
   const [storyTheme, setStoryTheme] = useState(isKidsMode ? 'Fairy Tale Kingdom' : 'Western');
   const kidsThemes = ['Enchanted Forest Adventures', 'Space Exploration', 'Pirate Treasure Hunt', 
@@ -78,7 +89,11 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
   }));
 
   const GamesList = styled(List)(({ theme }) => ({
-    maxHeight: '200px',
+    minHeight: '200px',
+    maxHeight: '600px',
+    [theme.breakpoints.down('md')]: {
+      maxHeight: '200px',
+    },
     overflowY: 'auto',
     backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
     borderRadius: '4px',
@@ -121,6 +136,16 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
     }
   };
 
+  const handleSaveGameTitle = async (game) => {
+    try {
+      await api.game.updateGame({gameId: game._id, title: game.title });
+      // Update the game in the userGames array
+      onUpdateGames(userGames.map(g => g._id === game._id ? {...g, ...game} : g));
+    } catch (error) {
+      console.error('Error updating game title:', error);
+    }
+  };
+
   return (
     <UserInterfaceContainer elevation={3}>
       <ContentContainer>
@@ -137,38 +162,66 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
           {t('logout')}
         </Button>
 
-        <Typography variant="h5" gutterBottom>
-          {t('yourGames')}
-        </Typography>
-        <GamesList>
-          {userGames.map((game, index) => (
-            <AlternatingListItem key={game._id} button onClick={() => onLoadGame(game._id)} index={index}>
-              <ListItemText 
-                primary={game.title} 
-                secondary={new Date(game.updatedAt).toLocaleString()} 
-              />
-            </AlternatingListItem>
-          ))}
-        </GamesList>
-
-        <Typography variant="h5" gutterBottom>
-          {t('startNewGame')}
-        </Typography>
-        {!isKidsMode && 
+        <Box 
+          display="flex" 
+          justifyContent="space-between" 
+          alignItems="stretch" 
+          gap={2} 
+          flexDirection={{ xs: 'column', md: 'row' }} 
+        >
+          <Box width="100%">
+            <Typography variant="h5" gutterBottom>
+            {t('yourGames')}
+          </Typography>
+          <GamesList>
+            {userGames.map((game, index) => (
+              <AlternatingListItem key={game._id} index={index}>
+                <EditableGameTitle
+                  game={game}
+                  onSave={handleSaveGameTitle}
+                  onLoadGame={onLoadGame}
+                />
+              </AlternatingListItem>
+            ))}
+          </GamesList>
+          </Box>
+          <Box width="100%" display="flex" flexDirection="column" >
+          <Typography variant="h5" gutterBottom>
+            {t('startNewGame')}
+          </Typography>
+          <TextInput
+              ref={newGameTitleRef}
+              label={t('title')}
+              initialValue={`${t('newGame')} ${userGames.length + 1}`}
+            />
+          <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
           <FormControl fullWidth margin="normal">
-            <InputLabel>{t('aiModel')}</InputLabel>
+            <InputLabel>{t('theme')}</InputLabel>
             <Select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
+              value={storyTheme}
+              onChange={(e) => setStoryTheme(e.target.value)}
             >
-              {aiModels.map(model => (
-                <MenuItem key={model} value={model}>{model.toUpperCase()}</MenuItem>
-              ))}
+              {(isKidsMode ? kidsThemes : adultThemes).map(style => {
+                return (
+                <MenuItem key={style} value={style}>{t(style.toLowerCase().replace(/ /g, '').replace(/\//g, '').replace(/-/g, ''))}</MenuItem>
+              )})}
             </Select>
           </FormControl>
-        }
+          {!isKidsMode && 
+            <FormControl fullWidth margin="normal">
+              <InputLabel>{t('aiModel')}</InputLabel>
+              <Select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+              >
+                {aiModels.map(model => (
+                  <MenuItem key={model} value={model}>{model.toUpperCase()}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          }
+        </Box>
 
-        {/* Controls in a Single Line */}
         <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
           <FormControl fullWidth margin="normal">
             <InputLabel>{t('imageStyle')}</InputLabel>
@@ -176,7 +229,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
               value={imageStyle}
               onChange={(e) => setImageStyle(e.target.value)}
             >
-              {['realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
+              {['photo-realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
                 'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
                 <MenuItem key={style} value={style}>{style}</MenuItem>
               ))}
@@ -209,22 +262,9 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
             </Select>
           </FormControl>
         </Box>
-
-         <FormControl fullWidth margin="normal">
-          <InputLabel>{t('theme')}</InputLabel>
-          <Select
-            value={storyTheme}
-            onChange={(e) => setStoryTheme(e.target.value)}
-          >
-            {(isKidsMode ? kidsThemes : adultThemes).map(style => {
-              return (
-              <MenuItem key={style} value={style}>{t(style.toLowerCase().replace(/ /g, '').replace(/\//g, '').replace(/-/g, ''))}</MenuItem>
-            )})}
-          </Select>
-        </FormControl>
-
+        
         {!isKidsMode && <Button 
-          onClick={() => onInitGame({role: 'DM', selectedModel, imageStyle, selectedVoice, language, isKidsMode})} 
+          onClick={() => onInitGame({role: 'DM', title: newGameTitleRef.current.getValue(), selectedModel, imageStyle, selectedVoice, language, isKidsMode})} 
           variant="contained" 
           color="primary"
           fullWidth
@@ -233,7 +273,7 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
           {t('newGameDM')}
         </Button>}
         <Button 
-          onClick={() => onInitGame({role: 'Player', selectedModel, imageStyle, selectedVoice, language, isKidsMode, storyTheme})} 
+          onClick={() => onInitGame({role: 'Player', title: newGameTitleRef.current.getValue(), selectedModel, imageStyle, selectedVoice, language, isKidsMode, storyTheme})} 
           variant="contained" 
           color="primary"
           fullWidth
@@ -241,6 +281,8 @@ const UserInterface = ({ user, onLogout, userGames, onLoadGame, onInitGame , ava
         >
           {`${t('newGame')} ${!isKidsMode ? t('asPlayer') : ""}`}
         </Button>
+        </Box>
+        </Box>
       </ContentContainer>
     </UserInterfaceContainer>
   );

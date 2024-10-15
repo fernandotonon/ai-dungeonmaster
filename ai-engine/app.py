@@ -51,10 +51,6 @@ whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-
 # Configure Google AI
 configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# load Llama
-#llama_tokenizer = AutoTokenizer.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-1B/", legacy=False)
-#llama_model = AutoModelForCausalLM.from_pretrained("/home/fernando/.llama/checkpoints/Llama3.2-1B/", ignore_mismatched_sizes=True).to(torch.device("cpu"))
-
 # Load image generation models
 torch.cuda.empty_cache()
 #pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3-medium-diffusers", torch_dtype=torch.float16, variant="fp16").to(device)
@@ -252,7 +248,7 @@ def generate_image():
         )
 
         if USE_LOCAL_MODELS:
-            system_message += "The prompt should have a maximum of 77 tokens."
+            system_message += ("The prompt should have a maximum of 77 tokens.")
 
         if is_kids_mode:
             system_message += (
@@ -262,7 +258,7 @@ def generate_image():
             )
         
         if theme:
-            system_message += f" The theme of the game is {theme}."
+            system_message += (f" The theme of the game is {theme}.")
         
         # Generate a detailed image prompt
         detailed_prompt = openai_client.chat.completions.create(
@@ -298,9 +294,11 @@ def generate_image():
             image = pipe(
                 prompt=image_prompt,
                 negative_prompt=negative_prompt,
-                num_inference_steps=100, 
+                num_inference_steps=50, 
                 max_embeddings_multiples=3,
-                guidance_scale=7.5
+                guidance_scale=7.5,
+                width=1024,
+                height=1024
             ).images[0]
 
             torch.cuda.empty_cache()  # Clear unused GPU memory
@@ -356,16 +354,6 @@ def generate_response(prompt, model, is_kids_mode=False, language=''):
             
             response = gemini_model.generate_content([system_message, prompt])
             generated_text = response.text
-        elif model == 'llama-3.2-1B':
-            # Llama-specific processing
-            input_text = f"{system_message}\n\nUser: {prompt}\n\nAssistant:"
-            input_ids = llama_tokenizer.encode(input_text, return_tensors="pt").to(device)
-            
-            with torch.no_grad():
-                output = llama_model.generate(input_ids, max_length=500, temperature=0.7)
-            
-            generated_text = llama_tokenizer.decode(output[0], skip_special_tokens=True)
-            generated_text = generated_text.split("Assistant:")[-1].strip()
         else:
             # Existing OpenAI processing
             openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')

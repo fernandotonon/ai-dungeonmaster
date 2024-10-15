@@ -40,6 +40,8 @@ export const game = {
   updatePreferences: (gameId, imageStyle, voice) => 
     api.post('/game/update-preferences', { gameId, imageStyle, voice }),
   addPlayer: (gameId, playerName) => api.post('/game/add-player', { gameId, playerName }),
+  updateGame: ({gameId, title, storyTheme}) => 
+    api.put('/game/update-game', { gameId, title, storyTheme }),
 };
 
 export const ai = {

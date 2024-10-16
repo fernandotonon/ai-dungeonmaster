@@ -85,18 +85,33 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
 
   const loadMediaFile = useCallback(async (fileType, fileName) => {
     if (mediaUrls[fileType][fileName] || loadingFiles.has(fileName)) return;
-
+  
     setLoadingFiles(prev => new Set(prev).add(fileName));
-
+  
     try {
-      const url = await (fileType === 'images' 
-        ? api.ai.getImageFile(fileName)
-        : api.ai.getAudioFile(fileName));
-
-      setMediaUrls(prev => ({
-        ...prev,
-        [fileType]: { ...prev[fileType], [fileName]: url }
-      }));
+      // Check if the file is in local storage
+      const cachedFile = localStorage.getItem(`${fileType}_${fileName}`);
+      
+      if (cachedFile) {
+        // If the file is cached, use it
+        setMediaUrls(prev => ({
+          ...prev,
+          [fileType]: { ...prev[fileType], [fileName]: cachedFile }
+        }));
+      } else {
+        // If not cached, fetch from server
+        const url = await (fileType === 'images' 
+          ? api.ai.getImageFile(fileName)
+          : api.ai.getAudioFile(fileName));
+  
+        // Store in local storage
+        localStorage.setItem(`${fileType}_${fileName}`, url);
+  
+        setMediaUrls(prev => ({
+          ...prev,
+          [fileType]: { ...prev[fileType], [fileName]: url }
+        }));
+      }
     } catch (error) {
       console.error(`Error loading ${fileType} ${fileName}:`, error);
     } finally {
@@ -106,6 +121,40 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
         return newSet;
       });
     }
+  }, []);
+  
+  // Add a cleanup function to manage local storage
+  useEffect(() => {
+    const cleanupLocalStorage = () => {
+      const storageLimit = 50 * 1024 * 1024; // 50 MB limit
+      let totalSize = 0;
+      const items = { ...localStorage };
+  
+      // Calculate total size and sort items by age
+      const sortedItems = Object.entries(items)
+        .filter(([key]) => key.startsWith('images_') || key.startsWith('audio_'))
+        .map(([key, value]) => {
+          totalSize += value.length;
+          return { key, size: value.length, time: localStorage.getItem(`${key}_time`) || Date.now() };
+        })
+        .sort((a, b) => a.time - b.time);
+  
+      // Remove oldest items if total size exceeds the limit
+      while (totalSize > storageLimit && sortedItems.length) {
+        const item = sortedItems.shift();
+        localStorage.removeItem(item.key);
+        localStorage.removeItem(`${item.key}_time`);
+        totalSize -= item.size;
+      }
+    };
+  
+    // Run cleanup when component mounts
+    cleanupLocalStorage();
+  
+    // Set up interval to run cleanup periodically (e.g., every hour)
+    const cleanupInterval = setInterval(cleanupLocalStorage, 60 * 60 * 1000);
+  
+    return () => clearInterval(cleanupInterval);
   }, []);
 
   useEffect(() => {

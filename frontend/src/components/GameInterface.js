@@ -83,6 +83,28 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     };
   }, []);
 
+  // Function to validate cached file
+  const validateCachedFile = async (url, fileType) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return false;
+
+      const blob = await response.blob();
+      
+      // Check if the blob is of the expected type
+      if (fileType === 'images' && !blob.type.startsWith('image/')) return false;
+      if (fileType === 'audios' && !blob.type.startsWith('audio/')) return false;
+
+      // Check if the blob has content
+      if (blob.size === 0) return false;
+
+      return true;
+    } catch (error) {
+      console.error('Error validating cached file:', error);
+      return false;
+    }
+  };
+
   const loadMediaFile = useCallback(async (fileType, fileName) => {
     if (mediaUrls[fileType][fileName] || loadingFiles.has(fileName)) return;
   
@@ -93,25 +115,33 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
       const cachedFile = localStorage.getItem(`${fileType}_${fileName}`);
       
       if (cachedFile) {
-        // If the file is cached, use it
-        setMediaUrls(prev => ({
-          ...prev,
-          [fileType]: { ...prev[fileType], [fileName]: cachedFile }
-        }));
-      } else {
-        // If not cached, fetch from server
-        const url = await (fileType === 'images' 
-          ? api.ai.getImageFile(fileName)
-          : api.ai.getAudioFile(fileName));
-  
-        // Store in local storage
-        localStorage.setItem(`${fileType}_${fileName}`, url);
-  
-        setMediaUrls(prev => ({
-          ...prev,
-          [fileType]: { ...prev[fileType], [fileName]: url }
-        }));
+        // Validate the cached file
+        const isValid = await validateCachedFile(cachedFile, fileType);
+        
+        if (isValid) {
+          // If the file is cached and valid, use it
+          setMediaUrls(prev => ({
+            ...prev,
+            [fileType]: { ...prev[fileType], [fileName]: cachedFile }
+          }));
+          return;
+        }
+        // If not valid, remove it from localStorage
+        localStorage.removeItem(`${fileType}_${fileName}`);
       }
+      
+      // If not cached or not valid, fetch from server
+      const url = await (fileType === 'images' 
+        ? api.ai.getImageFile(fileName)
+        : api.ai.getAudioFile(fileName));
+  
+      // Store in local storage
+      localStorage.setItem(`${fileType}_${fileName}`, url);
+  
+      setMediaUrls(prev => ({
+        ...prev,
+        [fileType]: { ...prev[fileType], [fileName]: url }
+      }));
     } catch (error) {
       console.error(`Error loading ${fileType} ${fileName}:`, error);
     } finally {
@@ -194,7 +224,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     }
   };
 
-  const handleGenerateImage = async (messageIndex) => {
+  const handleGenerateImage = useCallback(async (messageIndex) => {
     if (isGeneratingImage) return;
     setIsGeneratingImage(true);
     try {
@@ -208,9 +238,9 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     } finally {
       setIsGeneratingImage(false);
     }
-  };
+  }, [gameState.storyMessages, setGameState]);
 
-  const handleGenerateAudio = async (messageIndex) => {
+  const handleGenerateAudio = useCallback(async (messageIndex) => {
     if (isGeneratingAudio) return;
     setIsGeneratingAudio(true);
     try {
@@ -229,7 +259,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     } finally {
       setIsGeneratingAudio(false);
     }
-  };
+  }, [gameState.storyMessages, setGameState]);
 
   const extractJsonContent = (message, key, defaultValue) => {
     if( message.startsWith('```json')){
@@ -275,8 +305,14 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
           </IconButton>}
         </Box>
         
-        <Grid2 container spacing={2}>
-          <Grid2 item xs={12} sm={6}>
+        <Box 
+          display="flex" 
+          justifyContent="space-between" 
+          alignItems="stretch" 
+          gap={2} 
+          flexDirection={{ xs: 'column', md: 'row' }} 
+        >
+          <Box>
             <FormControl fullWidth>
               <InputLabel>{t('image_style')}</InputLabel>
               <Select
@@ -289,8 +325,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 ))}
               </Select>
             </FormControl>
-          </Grid2>
-          <Grid2 item xs={12} sm={6}>
+          </Box>
+          <Box>
             <FormControl fullWidth>
               <InputLabel>{t('voice')}</InputLabel>
               <Select
@@ -302,31 +338,31 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 ))}
               </Select>
             </FormControl>
-          </Grid2>
-        </Grid2>
+          </Box>
+          {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="left" flexDirection="column">
+            <Typography variant="body2" >
+            {t('your_role')}: {gameState.playerRole}
+            </Typography>
+            <Typography variant="body2" >
+            {t('ai_role')}: {gameState.aiRole}
+            </Typography>
+          </Box>}
+          {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="left" flexDirection="column">
+            <Typography variant="body2" >
+              {t('ai_model')}: {gameState.aiModel}
+            </Typography>
+            <Typography variant="body2" >
+              {t('theme')}: {gameState.storyTheme}
+            </Typography>
+          </Box>}
+        </Box>
 
-        {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="center" marginTop="10px">
-          <Typography variant="body1" gutterBottom>
-          {t('your_role')}: {gameState.playerRole}
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-          {t('ai_role')}: {gameState.aiRole}
-          </Typography>
-        </Box>}
-        {!isKidsMode && 
-          <Typography variant="body1" gutterBottom>
-            {t('ai_model')}: {gameState.aiModel}
-          </Typography>
-        }
-        {!isKidsMode && gameState.players.length > 0 && 
-          <Typography variant="body1" gutterBottom>
-            {t('players')}: {gameState.players.join(', ')}
-          </Typography>
-        }
 
-        <Typography variant="body1" gutterBottom>
-          {t('theme')}: {gameState.storyTheme}
-        </Typography>
+        {gameState.players.length > 0 && 
+            <Typography variant="body1" gutterBottom>
+              {t('players')}: {gameState.players.join(', ')}
+            </Typography>
+          }
 
         {!isKidsMode && gameState.playerRole === 'DM' && (
           <Grid2 container spacing={2} style={{ marginTop: '20px' }}>

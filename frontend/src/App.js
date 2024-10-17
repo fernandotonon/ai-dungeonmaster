@@ -17,7 +17,7 @@ const AppContainer = styled(Container)(({ theme }) => ({
 }));
 
 const Title = styled(Typography)(({ theme }) => ({
-  fontSize: '2.5rem',
+  fontSize: '1.5rem',
   color: theme.palette.primary.main,
   marginBottom: theme.spacing(2),
 }));

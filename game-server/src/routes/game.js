@@ -3,6 +3,7 @@ const verifyToken = require('../middleware/auth');
 const Game = require('../models/Game');
 const router = express.Router();
 const axios = require('axios');
+const { audioBucketName, imageBucketName, deleteFile } = require('../services/minioService');
 
 router.get('/user-games', verifyToken, async (req, res) => {
   try {
@@ -30,7 +31,7 @@ router.post('/init-game', verifyToken, async (req, res) => {
     
     if(storyTheme) {
       const response = await axios.post('http://192.168.18.3:5000/generate', {
-        prompt: `Act as a dungeon master in a story about ${storyTheme}. Start the story. Use short sentences and simple language.`,
+        prompt: `Act as a dungeon master in a story about ${storyTheme}. Start the story.`,
         model: gameState.aiModel,
         isKidsMode,
         language
@@ -116,6 +117,30 @@ router.post('/add-player', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error adding player:', error);
     res.status(500).json({ error: 'Error adding player' });
+  }
+});
+
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    //first delete all images and audios from minio
+    const game = await Game.findOne({ _id: req.params.id, user: req.user._id });
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    } 
+    const imageKeys = game.storyMessages.map(message => message.image);
+    const audioKeys = game.storyMessages.map(message => message.audio);
+    await deleteFile(imageBucketName, imageKeys);
+    await deleteFile(audioBucketName, audioKeys);
+    //then delete the game
+    await Game.findOneAndDelete({ _id: gameId, user: req.user._id });
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    res.json({ message: 'Game deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting game:', error);
+    res.status(500).json({ error: 'Error deleting game' });
   }
 });
 

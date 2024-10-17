@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ListItemText, TextField, IconButton, Box } from '@mui/material';
-import { Edit, Save, Cancel } from '@mui/icons-material';
+import { ListItemText, TextField, IconButton, Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button } from '@mui/material';
+import { Edit, Save, Cancel, Delete } from '@mui/icons-material';
 
-const EditableGameTitle = ({ game, onSave, onLoadGame }) => {
+const EditableGameTitle = ({ game, onSave, onLoadGame, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(game.title);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +38,18 @@ const EditableGameTitle = ({ game, onSave, onLoadGame }) => {
     }
   };
 
+  const handleDeleteClick = () => {
+    setOpenDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    onDelete(game._id);
+    setOpenDeleteDialog(false);
+  };
+
+  const handleDeleteCancel = () => {
+    setOpenDeleteDialog(false);
+  };
   if (isEditing) {
     return (
       <Box display="flex" alignItems="center" width="100%">
@@ -69,6 +82,28 @@ const EditableGameTitle = ({ game, onSave, onLoadGame }) => {
       <IconButton onClick={handleEditClick}>
         <Edit />
       </IconButton>
+      <IconButton onClick={handleDeleteClick}>
+        <Delete />
+      </IconButton>
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Delete Game"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete this game? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

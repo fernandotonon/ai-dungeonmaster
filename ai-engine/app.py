@@ -16,7 +16,7 @@ from PIL import Image
 from diffusers import DiffusionPipeline
 from torch.cuda.amp import autocast
 import base64
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizer
 from huggingface_hub import login
 
 logging.basicConfig(level=logging.INFO)
@@ -61,6 +61,25 @@ pipe.to("cpu")
 # torch.cuda.empty_cache()
 # pipe_vid = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid", torch_dtype=torch.float16).to(device)
 
+try:
+    model_id = "meta-llama/Llama-3.2-1B"
+
+    tokenizer = LlamaTokenizer.from_pretrained(model_id)
+    llm_model = LlamaForCausalLM.from_pretrained(
+        model_id,
+        torch_dtype=torch.float16, 
+        device_map="auto",
+        low_cpu_mem_usage=True,
+        max_memory={0: "5GB", "cpu": "16GB"}
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    logging.info("LLM model loaded successfully")
+except Exception as e:
+    logging.error(f"Failed to load LLM model: {str(e)}")
+    llm_model = None
+
+
 MODEL_MAPPING = {
     'gpt4o': 'gpt-4o',
     'gpt4o-mini': 'gpt-4o-mini',
@@ -68,7 +87,7 @@ MODEL_MAPPING = {
     'gpt4': 'gpt-4',
     'gpt35-turbo': 'gpt-3.5-turbo',
     'gemini-pro': 'gemini-pro',
-    # 'llama-3.2-1B': 'llama-3.2-1B' 
+    'llama32': 'llama32'
 }
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
@@ -247,9 +266,6 @@ def generate_image():
             f"The prompt should be suitable for image generation. Apply a {style} art style to the image. "
         )
 
-        if USE_LOCAL_MODELS:
-            system_message += ("The prompt should have a maximum of 77 tokens.")
-
         if is_kids_mode:
             system_message += (
                 "As this is for a children's story, ensure all content is family-friendly and appropriate for young audiences. "
@@ -267,7 +283,7 @@ def generate_image():
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": f"Context:\n{context_prompt}\n\nCurrent action:\n{current_message}\n\nGenerate a detailed image prompt for this scene in {style} style:"}
             ],
-            max_tokens=100
+            max_tokens=75
         )
         
         image_prompt = detailed_prompt.choices[0].message.content.strip()
@@ -329,7 +345,9 @@ def generate_response(prompt, model, is_kids_mode=False, language=''):
             "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
             "Respond appropriately based on the role specified in the prompt. "
             "Keep your responses concise and relevant to the game context."
-            "Respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)."
+            "When acting as Dungeon Master, respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)."
+            "e.g. { 'role': 'Dungeon Master', 'content': 'Story content', 'options': ['Option 1', 'Option 2', ...] }."
+            "When acting as Player, respond in plain text."
         )
 
         if is_kids_mode:
@@ -346,7 +364,7 @@ def generate_response(prompt, model, is_kids_mode=False, language=''):
             )        
 
         if language:
-            system_message += f" Respond in language ({language})."
+            system_message += f"\nRespond in language ({language})."
 
         if model == 'gemini-pro':
             # Gemini-specific processing
@@ -354,6 +372,22 @@ def generate_response(prompt, model, is_kids_mode=False, language=''):
             
             response = gemini_model.generate_content([system_message, prompt])
             generated_text = response.text
+        elif model == 'llama32':
+            if language:
+                prompt += f"\nRespond in language ({language})."
+            full_prompt = f"{system_message}\nUser: {prompt}\nAssistant:"
+            inputs = tokenizer(full_prompt, return_tensors="pt", padding=True, truncation=True).to("cuda")
+            with torch.no_grad():
+                outputs = llm_model.generate(
+                    inputs.input_ids,
+                    attention_mask=inputs.attention_mask,
+                    max_length=1500,
+                    num_beams=5,
+                    no_repeat_ngram_size=2,
+                    early_stopping=True
+                )
+            generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            generated_text = generated_text.split("Assistant:")[-1].strip()
         else:
             # Existing OpenAI processing
             openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')

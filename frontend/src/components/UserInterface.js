@@ -146,6 +146,16 @@ const UserInterface = ({
     }
   };
 
+  const handleDeleteGame = async (gameId) => {
+    try {
+      await api.game.deleteGame(gameId);
+      // Remove the game from the userGames array
+      onUpdateGames(userGames.filter(g => g._id !== gameId));
+    } catch (error) {
+      console.error('Error deleting game:', error);
+    }
+  };
+
   return (
     <UserInterfaceContainer elevation={3}>
       <ContentContainer>
@@ -180,6 +190,7 @@ const UserInterface = ({
                   game={game}
                   onSave={handleSaveGameTitle}
                   onLoadGame={onLoadGame}
+                  onDelete={handleDeleteGame}
                 />
               </AlternatingListItem>
             ))}

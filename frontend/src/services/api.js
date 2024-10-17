@@ -42,6 +42,7 @@ export const game = {
   addPlayer: (gameId, playerName) => api.post('/game/add-player', { gameId, playerName }),
   updateGame: ({gameId, title, storyTheme}) => 
     api.put('/game/update-game', { gameId, title, storyTheme }),
+  deleteGame: (gameId) => api.delete(`/game/${gameId}`),
 };
 
 export const ai = {

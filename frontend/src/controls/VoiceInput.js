@@ -201,7 +201,6 @@ const VoiceInput = ({ onTranscript, setError, gameState }) => {
         startIcon={isRecording ? <StopIcon /> : <MicIcon />}
         onClick={isRecording ? stopRecording : startRecording}
         disabled={isProcessing}
-        style={{ marginBottom: '10px' }}
       >
         {buttonContent}
       </Button>

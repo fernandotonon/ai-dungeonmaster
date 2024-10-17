@@ -26,7 +26,8 @@ const ActionInput = ({ onSubmit, setError, gameState }) => {
       <TextField
         label={t('enter_action')} 
         multiline
-        rows={4}
+        minRows={1}
+        maxRows={10}
         value={action}
         onChange={(e) => setAction(e.target.value)}
         fullWidth
@@ -37,7 +38,6 @@ const ActionInput = ({ onSubmit, setError, gameState }) => {
           onClick={handleSubmit} 
           variant="contained" 
           color="primary"
-          style={{ marginBottom: '10px' }}
         >
           {t('submit_action')} 
         </Button>

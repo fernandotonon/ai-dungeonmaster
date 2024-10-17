@@ -36,10 +36,15 @@ const getFile = async (bucketName, fileName) => {
   return await minioClient.getObject(bucketName, fileName);
 };
 
+const deleteFile = async (bucketName, fileName) => {
+  await minioClient.removeObject(bucketName, fileName);
+};
+
 module.exports = {
   initializeBuckets,
   storeFile,
   getFile,
+  deleteFile,
   audioBucketName,
   imageBucketName
 };

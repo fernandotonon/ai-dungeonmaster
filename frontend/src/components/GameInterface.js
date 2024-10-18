@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   TextField,
   Button, 
@@ -22,6 +22,7 @@ import api from '../services/api';
 import ActionInput from '../controls/ActionInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
 import FullscreenImageViewer from './FullscreenImageViewer';
+import MessageList from './MessageList';
 
 const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, availableVoices }) => {
   const { t, i18n } = useTranslation(); 
@@ -33,7 +34,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
   const [mediaUrls, setMediaUrls] = useState({ images: {}, audios: {} });
-  const [loadingFiles, setLoadingFiles] = useState(new Set());
+  const loadingFilesRef = useRef(new Set());
   const [fullscreenImage, setFullscreenImage] = useState(null);
 
   const GameContainer = styled(Paper)(({ theme }) => ({
@@ -58,22 +59,6 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     marginTop: '20px',
     backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
   }));
-
-  const Message = styled(Box)(({ theme, sender, aiRole }) => ({
-    marginBottom: '10px',
-    padding: '10px',
-    borderRadius: '4px',
-    backgroundColor: sender === aiRole 
-      ? theme.palette.mode === 'dark' ? 'rgba(0, 0, 255, 0.2)' : 'rgba(0, 0, 255, 0.1)'
-      : theme.palette.mode === 'dark' ? 'rgba(0, 255, 0, 0.2)' : 'rgba(0, 255, 0, 0.1)',
-  }));
-
-  const ImageContainer = styled('div')`
-    cursor: pointer;
-    &:hover {
-      opacity: 0.8;
-    }
-  `;
 
   useEffect(() => {
     setBackgroundImage(getRandomBackground(isKidsMode));
@@ -106,10 +91,10 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   };
 
   const loadMediaFile = useCallback(async (fileType, fileName) => {
-    if (mediaUrls[fileType][fileName] || loadingFiles.has(fileName)) return;
-  
-    setLoadingFiles(prev => new Set(prev).add(fileName));
-  
+    if (mediaUrls[fileType][fileName] || loadingFilesRef.current.has(fileName)) return;
+
+    loadingFilesRef.current.add(fileName);
+
     try {
       // Check if the file is in local storage
       const cachedFile = localStorage.getItem(`${fileType}_${fileName}`);
@@ -134,10 +119,10 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
       const url = await (fileType === 'images' 
         ? api.ai.getImageFile(fileName)
         : api.ai.getAudioFile(fileName));
-  
+
       // Store in local storage
       localStorage.setItem(`${fileType}_${fileName}`, url);
-  
+
       setMediaUrls(prev => ({
         ...prev,
         [fileType]: { ...prev[fileType], [fileName]: url }
@@ -145,13 +130,26 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     } catch (error) {
       console.error(`Error loading ${fileType} ${fileName}:`, error);
     } finally {
-      setLoadingFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(fileName);
-        return newSet;
-      });
+      loadingFilesRef.current.delete(fileName);
     }
-  }, []);
+  }, [mediaUrls]);
+
+  useEffect(() => {
+    const loadImagesAndAudios = async () => {
+      const promises = gameState.storyMessages.map(async (message) => {
+        if (message.imageFile && !mediaUrls.images[message.imageFile] && !loadingFilesRef.current.has(message.imageFile)) {
+          await loadMediaFile('images', message.imageFile);
+        }
+        if (message.audioFile && !mediaUrls.audios[message.audioFile] && !loadingFilesRef.current.has(message.audioFile)) {
+          await loadMediaFile('audios', message.audioFile);
+        }
+      });
+
+      await Promise.all(promises);
+    };
+
+    loadImagesAndAudios();
+  }, [gameState.storyMessages, loadMediaFile, mediaUrls]);
   
   // Add a cleanup function to manage local storage
   useEffect(() => {
@@ -186,14 +184,6 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   
     return () => clearInterval(cleanupInterval);
   }, []);
-
-  useEffect(() => {
-    gameState.storyMessages.forEach(message => {
-      if (message.imageFile) loadMediaFile('images', message.imageFile);
-      if (message.audioFile) loadMediaFile('audios', message.audioFile);
-    });
-  }, [gameState.storyMessages, loadMediaFile]);
-
 
   const handleUpdatePreferences = async (newImageStyle, newVoice) => {
     try {
@@ -261,33 +251,9 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     }
   }, [gameState.storyMessages, setGameState]);
 
-  const extractJsonContent = (message, key, defaultValue) => {
-    if( message.startsWith('```json')){
-      const jsonContent = message.split('```json')[1].split('```')[0];
-      return JSON.parse(jsonContent)[key] || defaultValue;
-    } else {
-      try {
-        const parsedMessage = JSON.parse(message);
-        if (parsedMessage && typeof parsedMessage === 'object' && parsedMessage.hasOwnProperty(key)) {
-          return parsedMessage[key];
-        }
-      } catch (error) {
-      }
-    }
-    return defaultValue;
-  }
-
-  const getMessageContent = (message) => {
-    return extractJsonContent(message, 'content', message);
-  }
-
-  const getMessageOptions = (message) => {
-    return extractJsonContent(message, 'options', []);
-  }
-
-  const handleImageClick = (imageUrl) => {
+  const handleImageClick = useCallback((imageUrl) => {
     setFullscreenImage(imageUrl);
-  };
+  }, []);
 
   const handleCloseFullscreen = () => {
     setFullscreenImage(null);
@@ -394,55 +360,15 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
         />
 
         <StoryContainer elevation={2}>
-          {gameState.storyMessages.slice().reverse().map((message, index) => (
-            <Message key={message.id} sender={message.sender} aiRole={gameState.aiRole}>
-              {(index === 0) && getMessageOptions(message.content).map((option, index) => (
-                <Button key={index} onClick={() => handleSubmitAction(option)}>
-                  {option}
-                </Button>
-              ))}
-              <Typography variant="subtitle1">
-                <strong>{message.sender}:</strong> {getMessageContent(message.content)}
-              </Typography>
-              <Box display="flex" alignItems="center">
-              {message.audioFile && (
-                loadingFiles.has(message.audioFile) ? (
-                  <CircularProgress size={24} />
-                ) : mediaUrls.audios[message.audioFile] ? (
-                  <audio controls src={mediaUrls.audios[message.audioFile]} />
-                ) : ""
-              )}
-              {!message.audioFile && (
-                <IconButton 
-                  onClick={() => handleGenerateAudio(gameState.storyMessages.length - index - 1)}
-                  disabled={isGeneratingAudio}
-                >
-                  <VolumeUp />
-                </IconButton>
-              )}
-              {!message.imageFile && <IconButton 
-                    onClick={() => handleGenerateImage(gameState.storyMessages.length - index - 1)}
-                    disabled={isGeneratingImage}
-                    style={{ marginLeft: '15px' }}  // Add spacing between audio and image buttons
-                  >
-                    <Image />
-                  </IconButton>  }
-              </Box>
-              {message.imageFile && (
-                loadingFiles.has(message.imageFile) ? (
-                  <CircularProgress size={24} />
-                ) : mediaUrls.images[message.imageFile] ? (
-                  <ImageContainer onClick={() => handleImageClick(mediaUrls.images[message.imageFile])}>
-                    <img 
-                      src={mediaUrls.images[message.imageFile]} 
-                      alt="Generated scene" 
-                      style={{ maxWidth: '100%' }} 
-                    />
-                  </ImageContainer>
-                ) : ""
-              )}
-            </Message>
-          ))}
+          <MessageList
+            gameState={gameState}
+            mediaUrls={mediaUrls}
+            loadingFiles={loadingFilesRef.current}
+            handleGenerateAudio={handleGenerateAudio}
+            handleGenerateImage={handleGenerateImage}
+            handleImageClick={handleImageClick}
+            handleSubmitAction={handleSubmitAction}
+          />
           <FullscreenImageViewer 
             open={!!fullscreenImage} 
             onClose={handleCloseFullscreen} 

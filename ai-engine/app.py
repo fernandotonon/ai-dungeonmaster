@@ -64,7 +64,7 @@ pipe.to("cpu")
 try:
     model_id = "meta-llama/Llama-3.2-1B"
 
-    tokenizer = LlamaTokenizer.from_pretrained(model_id)
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     llm_model = LlamaForCausalLM.from_pretrained(
         model_id,
         torch_dtype=torch.float16, 

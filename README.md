@@ -3,7 +3,7 @@ AI-Powered Holodeck-Style Online RPG
 
 ## Create virtual environment
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate && python app.py
 
 ## Run docker compose
 docker compose --env-file ./.env up --build

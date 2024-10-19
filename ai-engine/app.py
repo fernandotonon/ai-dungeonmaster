@@ -62,7 +62,7 @@ pipe.to("cpu")
 # pipe_vid = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid", torch_dtype=torch.float16).to(device)
 
 try:
-    model_id = "meta-llama/Llama-3.2-1B"
+    model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     llm_model = LlamaForCausalLM.from_pretrained(
@@ -91,6 +91,26 @@ MODEL_MAPPING = {
 }
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
+
+@app.route('/llm-chat', methods=['POST'])
+def llm_chat():
+    data = request.form
+    prompt = data.get('prompt')
+
+    full_prompt = f"User: {prompt}\nAssistant:"
+    inputs = tokenizer(full_prompt, return_tensors="pt", padding=True, truncation=True).to("cuda")
+    with torch.no_grad():
+        outputs = llm_model.generate(
+            inputs.input_ids,
+            attention_mask=inputs.attention_mask,
+            max_length=1500,
+            num_beams=5,
+            no_repeat_ngram_size=2,
+            early_stopping=True
+        )
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    generated_text = generated_text.split("Assistant:")[-1].strip()
+    return generated_text
 
 @app.route('/generate-local-image', methods=['POST'])
 def generate_local_image():
@@ -339,16 +359,23 @@ def generate_image():
         logger.error(f"Error generating image: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-def generate_response(prompt, model, is_kids_mode=False, language=''):
+def generate_response(prompt, model, is_kids_mode=False, language='', ai_role='DM'):
     try:
         system_message = (
             "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. "
             "Respond appropriately based on the role specified in the prompt. "
             "Keep your responses concise and relevant to the game context."
-            "When acting as Dungeon Master, respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)."
-            "e.g. { 'role': 'Dungeon Master', 'content': 'Story content', 'options': ['Option 1', 'Option 2', ...] }."
-            "When acting as Player, respond in plain text."
         )
+
+        if ai_role == 'DM':
+            system_message += (
+                "When acting as Dungeon Master, respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)."
+                "e.g. { 'role': 'Dungeon Master', 'content': 'Story content', 'options': ['Option 1', 'Option 2', ...] }."
+            )
+        else:
+            system_message += (
+                "When acting as Player, respond in plain text."
+            )
 
         if is_kids_mode:
             system_message += (
@@ -433,11 +460,11 @@ def generate_text():
     model = data.get('model', 'gpt4o-mini')  # Default to GPT-4o-mini if not specified
     is_kids_mode = data.get('isKidsMode', False)  # Get the kids mode status
     language = data.get('language', '')  
-    
+    ai_role = data.get('aiRole', 'DM')
     try:
-        logger.info(f"Generating text with model: {model}, Kids Mode: {is_kids_mode}, Language: {language}")
+        logger.info(f"Generating text with model: {model}, Kids Mode: {is_kids_mode}, Language: {language}, AI Role: {ai_role}")
         if model in MODEL_MAPPING:
-            generated_text = generate_response(prompt, model, is_kids_mode, language)
+            generated_text = generate_response(prompt, model, is_kids_mode, language, ai_role)
         else:
             return jsonify({'error': 'Invalid model specified'}), 400
         

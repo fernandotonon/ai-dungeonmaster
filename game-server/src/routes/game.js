@@ -17,11 +17,11 @@ router.get('/user-games', verifyToken, async (req, res) => {
 router.post('/init-game', verifyToken, async (req, res) => {
   try {
     const { playerRole, aiModel, imageStyle, voice, title, storyTheme, isKidsMode, language } = req.body;
-    console.log('req.body', req.body);
+    const aiRole = playerRole === 'DM' ? 'Player' : 'DM';
     const gameState = new Game({
       title,
       playerRole,
-      aiRole: playerRole === 'DM' ? 'Player' : 'DM',
+      aiRole,
       aiModel,
       imageStyle,
       voice,
@@ -31,10 +31,11 @@ router.post('/init-game', verifyToken, async (req, res) => {
     
     if(storyTheme) {
       const response = await axios.post('http://192.168.18.3:5000/generate', {
-        prompt: `Act as a dungeon master in a story about ${storyTheme}. Start the story.`,
+        prompt: `Your role is Dungeon Master. Start a story on the theme: ${storyTheme}.`,
         model: gameState.aiModel,
         isKidsMode,
-        language
+        language,
+        aiRole
       });
       let aiResponse = response.data.generated_text.trim();
       

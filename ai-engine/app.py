@@ -8,6 +8,7 @@ import torch
 import torchaudio
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from gtts import gTTS
+from TTS.api import TTS 
 from google.generativeai import GenerativeModel, configure
 import google.generativeai as genai
 from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler, AutoPipelineForText2Image, StableDiffusion3Pipeline
@@ -18,6 +19,7 @@ from torch.cuda.amp import autocast
 import base64
 from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizer
 from huggingface_hub import login
+import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,7 +64,7 @@ pipe.to("cpu")
 # pipe_vid = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid", torch_dtype=torch.float16).to(device)
 
 try:
-    model_id = "meta-llama/Llama-3.1-8B-Instruct"
+    model_id = "meta-llama/Llama-3.2-1B-Instruct"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     llm_model = LlamaForCausalLM.from_pretrained(
@@ -70,7 +72,7 @@ try:
         torch_dtype=torch.float16, 
         device_map="auto",
         low_cpu_mem_usage=True,
-        max_memory={0: "5GB", "cpu": "16GB"}
+        max_memory={0: "4GB", "cpu": "16GB"}
     )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -79,6 +81,8 @@ except Exception as e:
     logging.error(f"Failed to load LLM model: {str(e)}")
     llm_model = None
 
+# Load Coqui TTS model
+coqui_tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=False).to(device)
 
 MODEL_MAPPING = {
     'gpt4o': 'gpt-4o',
@@ -94,7 +98,7 @@ AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer
 
 @app.route('/llm-chat', methods=['POST'])
 def llm_chat():
-    data = request.form
+    data = request.json
     prompt = data.get('prompt')
 
     full_prompt = f"User: {prompt}\nAssistant:"
@@ -103,7 +107,7 @@ def llm_chat():
         outputs = llm_model.generate(
             inputs.input_ids,
             attention_mask=inputs.attention_mask,
-            max_length=1500,
+            max_length=500,
             num_beams=5,
             no_repeat_ngram_size=2,
             early_stopping=True
@@ -130,71 +134,6 @@ def generate_local_image():
     except Exception as e:
         logger.error(f"Error in generate_image: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-# @app.route('/convert-to-video', methods=['POST'])
-# def convert_to_video():
-#     # Get the image from the request
-#     file = request.files['image']
-#     image = Image.open(file)
-
-#     try:
-#         # Clear GPU cache to avoid memory fragmentation
-#         torch.cuda.empty_cache()
-
-#         # Convert the image to a video using img2vid on GPU
-#         with torch.cuda.amp.autocast():
-#             video_frames = pipe_vid(image, num_inference_steps=10, num_frames=3).frames
-
-#         # Clear GPU cache to avoid memory fragmentation
-#         torch.cuda.empty_cache()
-#         # Create a video from the generated frames
-#         video_path = "/tmp/generated_video.mp4"
-#         video_frames[0].save(
-#             video_path,
-#             save_all=True,
-#             append_images=video_frames[1:],
-#             duration=100,
-#             loop=0,
-#         )
-
-#         # Send the video file
-#         return send_file(video_path, mimetype='video/mp4')
-
-#     except Exception as e:
-#         logger.error(f"Error in convert_to_video: {str(e)}")
-#         return jsonify({'error': str(e)}), 500
-
-# @app.route('/generate-video', methods=['POST'])
-# def generate_video():
-#     # Clear GPU cache to avoid memory fragmentation
-#     torch.cuda.empty_cache()
-
-#     # Get the image from the request
-#     # Get the text prompt from the request
-#     data = request.get_json()
-#     prompt = data.get('prompt', 'a beautiful landscape')
-
-#     # Generate the image from the prompt
-#     image = pipe(prompt).images[0]
-
-#     # Clear GPU cache to avoid memory fragmentation
-#     torch.cuda.empty_cache()
-
-#     # Convert the image to a video using img2vid
-#     video_frames = pipe_vid(image, num_inference_steps=25, num_frames=10).frames
-
-#     # Create a video from the generated frames
-#     video_path = "/tmp/generated_video.mp4"
-#     video_frames[0].save(
-#         video_path,
-#         save_all=True,
-#         append_images=video_frames[1:],
-#         duration=100,
-#         loop=0,
-#     )
-
-#     # Send the video file
-#     return send_file(video_path, mimetype='video/mp4')
 
 @app.route('/speech-to-text', methods=['POST'])
 def speech_to_text():
@@ -241,6 +180,23 @@ def text_to_speech():
     voice = data.get('voice', 'alloy')
     language = data.get('language', 'en')
 
+    if text.startswith("```json"):
+        text = text.split("```json")[1].split("```")[0]
+
+    # Check if text is JSON and extract the content attribute
+    try:
+        # Attempt to parse the text as JSON
+        parsed_text = json.loads(text)
+        # If successful, extract the 'content' attribute
+        if isinstance(parsed_text, dict) and 'content' in parsed_text:
+            text = parsed_text['content']
+        if isinstance(parsed_text, dict) and 'options' in parsed_text:
+            text += "\n".join(parsed_text['options'])
+    except json.JSONDecodeError:
+        # If text is not valid JSON, keep the original text
+        logger.info("Text is not valid JSON, using original text.")
+        
+
     if voice not in AVAILABLE_VOICES:
         return jsonify({'error': 'Invalid voice selected'}), 400
     
@@ -252,6 +208,11 @@ def text_to_speech():
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             tts.save(temp_file.name)
             return send_file(temp_file.name, mimetype="audio/mp3")
+        elif USE_LOCAL_MODELS:
+            # Use Coqui TTS to generate speech
+            text = text.replace(".","\n")
+            coqui_tts.tts_to_file(text=text, file_path=temp_file.name, language=language[:2], speaker_wav="voice_samples/"+voice+".wav")
+            return send_file(temp_file.name, mimetype="audio/wav")
         else:
             # API processing
             response = openai_client.audio.speech.create(

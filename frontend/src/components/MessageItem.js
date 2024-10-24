@@ -4,7 +4,19 @@ import { VolumeUp, Image } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { getMessageContent, getMessageOptions } from '../utils/messageUtils';
 
-const MessageItem = ({ message, index, gameState, mediaUrls, loadingFiles, handleSubmitAction, handleGenerateAudio, handleGenerateImage, handleImageClick }) => {
+const MessageItem = ({ 
+  message, 
+  index, 
+  gameState, 
+  mediaUrls, 
+  loadingFiles, 
+  handleSubmitAction, 
+  handleGenerateAudio, 
+  handleGenerateImage, 
+  handleImageClick,
+  isGeneratingAudio,
+  isGeneratingImage
+}) => {
   const Message = styled(Box)(({ theme, sender, aiRole }) => ({
     marginBottom: '10px',
     padding: '10px',
@@ -41,36 +53,39 @@ const MessageItem = ({ message, index, gameState, mediaUrls, loadingFiles, handl
           ))}
         </ButtonContainer>
       )}
-      <Typography variant="subtitle1">
-        <strong>{message.sender}:</strong> {getMessageContent(message.content)}
-      </Typography>
-      <Box display="flex" alignItems="center">
-        {message.audioFile && (
-          loadingFiles.has(message.audioFile) ? (
-            <CircularProgress size={24} />
-          ) : mediaUrls.audios[message.audioFile] ? (
-            <audio controls src={mediaUrls.audios[message.audioFile]} />
-          ) : null
-        )}
-        {!message.audioFile && (
-          <IconButton 
-            onClick={() => handleGenerateAudio(gameState.storyMessages.length - index - 1)}
-            disabled={loadingFiles.has(message.audioFile)}
-          >
-            <VolumeUp />
-          </IconButton>
-        )}
-        {!message.imageFile && (
-          <IconButton 
-            onClick={() => handleGenerateImage(gameState.storyMessages.length - index - 1)}
-            disabled={loadingFiles.has(message.imageFile)}
-            style={{ marginLeft: '15px' }}
-          >
-            <Image />
-          </IconButton>
-        )}
-      </Box>
-      {message.imageFile && (
+      <Box display="flex" alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" flexDirection={{ xs: 'column', md: 'row' }}>
+        <Box display="flex" alignItems="start" flexDirection="column">
+          <Typography variant="subtitle1" style={{ marginRight: '10px', textAlign: 'justify' }}>
+            <strong>{message.sender}:</strong> {getMessageContent(message.content)}
+          </Typography>
+          <Box display="flex" alignItems="center">
+            {message.audioFile && (
+              loadingFiles.has(message.audioFile) ? (
+                <CircularProgress size={24} />
+              ) : mediaUrls.audios[message.audioFile] ? (
+                <audio controls src={mediaUrls.audios[message.audioFile]} />
+              ) : null
+            )}
+            {!message.audioFile && (
+              <IconButton 
+                onClick={() => handleGenerateAudio(gameState.storyMessages.length - index - 1)}
+                disabled={loadingFiles.has(message.audioFile) || isGeneratingAudio}
+              >
+                <VolumeUp />
+              </IconButton>
+            )}
+            {!message.imageFile && (
+              <IconButton 
+                onClick={() => handleGenerateImage(gameState.storyMessages.length - index - 1)}
+                disabled={loadingFiles.has(message.imageFile) || isGeneratingImage}
+                style={{ marginLeft: '15px' }}
+              >
+                <Image />
+              </IconButton>
+            )}
+          </Box>
+        </Box>
+        {message.imageFile && (
         loadingFiles.has(message.imageFile) ? (
           <CircularProgress size={24} />
         ) : mediaUrls.images[message.imageFile] ? (
@@ -78,11 +93,12 @@ const MessageItem = ({ message, index, gameState, mediaUrls, loadingFiles, handl
             <img 
               src={mediaUrls.images[message.imageFile]} 
               alt="Generated scene" 
-              style={{ maxWidth: '100%' }} 
+              style={{ maxWidth: '200px', maxHeight: '200px' }} 
             />
           </ImageContainer>
-        ) : null
-      )}
+          ) : null
+        )}
+      </Box>
     </Message>
   );
 };

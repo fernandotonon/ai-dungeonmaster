@@ -11,7 +11,8 @@ import { useKidsMode } from './KidsModeContext';
 import CookieConsent from './components/CookieConsent';
 
 const AppContainer = styled(Container)(({ theme }) => ({
-  maxWidth: '800px',
+  maxWidth: '1500px',
+  height: '100%',
   margin: '0 auto',
   padding: theme.spacing(2),
 }));

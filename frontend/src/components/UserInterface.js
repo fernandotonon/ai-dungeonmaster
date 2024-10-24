@@ -11,8 +11,12 @@ import {
   IconButton,
   Box,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
-import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { Brightness4, Brightness7, Settings } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import { useTranslation } from 'react-i18next'; 
@@ -22,7 +26,7 @@ import KidsModeToggle from '../controls/KidsModeToggle';
 import { useKidsMode } from '../KidsModeContext';
 import EditableGameTitle from '../controls/EditableGameTitleInput';
 import TextInput from '../controls/TextInput';
-
+import UserSettings from './UserSettings';
 // Supported languages
 const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
 
@@ -34,13 +38,14 @@ const UserInterface = ({
   onLoadGame, 
   onInitGame, 
   availableVoices, 
-  setAvailableVoices
+  setAvailableVoices,
+  onUpdateUser
 }) => {
   const { t, i18n } = useTranslation();
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
     ? navigator.language.toLowerCase() 
     : 'pt-br';
-
+  const [showUserSettings, setShowUserSettings] = useState(false);
   const [backgroundImage, setBackgroundImage] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedVoice, setSelectedVoice] = useState('');
@@ -164,6 +169,9 @@ const UserInterface = ({
             {t('welcome', { username: user.username })}  
           </Typography>
           <KidsModeToggle />
+          <IconButton onClick={() => setShowUserSettings(!showUserSettings)} color="inherit">
+            <Settings />
+          </IconButton>
           {!isKidsMode && <IconButton onClick={toggleTheme} color="inherit">
             {darkMode ? <Brightness7 /> : <Brightness4 />}
           </IconButton>}
@@ -294,6 +302,19 @@ const UserInterface = ({
         </Button>
         </Box>
         </Box>
+        {showUserSettings && (
+          <Dialog open={showUserSettings} onClose={() => setShowUserSettings(false)}>
+            <DialogTitle>{t('userSettings')}</DialogTitle>
+            <DialogContent>
+              <UserSettings user={user} onUpdateUser={onUpdateUser} />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setShowUserSettings(false)} color="primary">
+                {t('close')}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
       </ContentContainer>
     </UserInterfaceContainer>
   );

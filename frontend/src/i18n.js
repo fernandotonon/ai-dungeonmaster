@@ -65,7 +65,8 @@ const resources = {
       registration_successful: "Registration successful. Please log in.",
       registration_failed: "Registration failed",
       login_failed: "Login failed",
-      title: "Title"
+      title: "Title",
+      ttsTrainingText: "The quick brown fox jumps over the lazy dog. Words flow naturally in speech."
     }
   },
   ptbr: {
@@ -130,7 +131,8 @@ const resources = {
       registration_successful: "Registro bem-sucedido. Por favor, faça login.",
       registration_failed: "Falha no registro",
       login_failed: "Falha no login",
-      title: "Título"
+      title: "Título",
+      ttsTrainingText: "A rápida raposa marrom salta sobre o cachorro preguiçoso. As palavras fluem na fala."
     }
   },
   es: {
@@ -195,7 +197,8 @@ const resources = {
       registration_successful: "Registro exitoso. Por favor, inicie sesión.",
       registration_failed: "Error en el registro",
       login_failed: "Error en el inicio de sesión",
-      title: "Título"
+      title: "Título",
+      ttsTrainingText: "El rápido zorro marrón salta sobre el perro perezoso. Las palabras fluyen naturalmente."
     }
   },
   de: {
@@ -260,7 +263,8 @@ const resources = {
       registration_successful: "Registrierung erfolgreich. Bitte melde dich an.",
       registration_failed: "Registrierung fehlgeschlagen",
       login_failed: "Anmeldung fehlgeschlagen",
-      title: "Titel"
+      title: "Titel",
+      ttsTrainingText: "Der schnelle braune Fuchs springt über den faulen Hund. Wörter fließen natürlich."
     }
   },
   it: {
@@ -325,7 +329,8 @@ const resources = {
       registration_successful: "Registrazione avvenuta con successo. Effettua il login.",
       registration_failed: "Registrazione fallita",
       login_failed: "Accesso fallito",
-      title: "Titolo"
+      title: "Titolo",
+      ttsTrainingText: "Il rapido cane marrone salta sopra il volpe pigro. Le parole scorrono nel discorso."
     }
   },
   fr: {
@@ -390,7 +395,8 @@ const resources = {
       registration_successful: "Inscription réussie. Veuillez vous connecter.",
       registration_failed: "Échec de l'inscription",
       login_failed: "Échec de la connexion",
-      title: "Titre"
+      title: "Titre",
+      ttsTrainingText: "Le renard brun rapide saute par-dessus le chien paresseux. Les mots coulent naturellement."
     }
   }
   // Add translations for other languages here

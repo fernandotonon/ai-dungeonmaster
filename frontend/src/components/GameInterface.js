@@ -10,10 +10,9 @@ import {
   Typography,
   Paper,
   Grid2,
-  Box,
-  CircularProgress
+  Box
 } from '@mui/material';
-import { VolumeUp, Image, Brightness4, Brightness7 } from '@mui/icons-material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../ThemeContext';
 import { useKidsMode } from '../KidsModeContext';
@@ -270,112 +269,116 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
             {darkMode ? <Brightness7 /> : <Brightness4 />}
           </IconButton>}
         </Box>
-        
-        <Box 
-          display="flex" 
-          justifyContent="space-between" 
-          alignItems="stretch" 
-          gap={2} 
-          flexDirection={{ xs: 'column', md: 'row' }} 
-        >
+        <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} height="100%">
           <Box>
-            <FormControl fullWidth>
-              <InputLabel>{t('image_style')}</InputLabel>
-              <Select
-                value={gameState.imageStyle}
-                onChange={(e) => handleUpdatePreferences(e.target.value, gameState.voice)}
-              >
-                {['photo-realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
-                  'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
-                  <MenuItem key={style} value={style}>{style}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box 
+              display="flex" 
+              justifyContent="space-between" 
+              alignItems="stretch" 
+              gap={2} 
+              flexDirection={{ xs: 'row', md: 'column' }}
+            >
+              <Box>
+                <FormControl fullWidth>
+                  <InputLabel>{t('image_style')}</InputLabel>
+                  <Select
+                    value={gameState.imageStyle}
+                    onChange={(e) => handleUpdatePreferences(e.target.value, gameState.voice)}
+                  >
+                    {['photo-realistic', 'cartoon', 'anime', 'hand-drawn', 'pixel art', 
+                      'fantasy illustration', 'oil painting', 'watercolor'].map(style => (
+                      <MenuItem key={style} value={style}>{style}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box>
+                <FormControl fullWidth>
+                  <InputLabel>{t('voice')}</InputLabel>
+                  <Select
+                    value={gameState.voice}
+                    onChange={(e) => handleUpdatePreferences(gameState.imageStyle, e.target.value)}
+                  >
+                    {availableVoices.map(voice => (
+                      <MenuItem key={voice} value={voice.toLowerCase()}>{voice}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="left" flexDirection="column">
+                <Typography variant="body2" >
+                {t('your_role')}: {gameState.playerRole}
+                </Typography>
+                <Typography variant="body2" >
+                {t('ai_role')}: {gameState.aiRole}
+                </Typography>
+              </Box>}
+              {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="left" flexDirection="column">
+                <Typography variant="body2" >
+                  {t('ai_model')}: {gameState.aiModel}
+                </Typography>
+                <Typography variant="body2" >
+                  {t('theme')}: {gameState.storyTheme}
+                </Typography>
+              </Box>}
+            </Box>
+
+
+            {gameState.players.length > 0 && 
+                <Typography variant="body1" gutterBottom>
+                  {t('players')}: {gameState.players.join(', ')}
+                </Typography>
+              }
+
+            {!isKidsMode && gameState.playerRole === 'DM' && (
+              <Grid2 container spacing={2} style={{ marginTop: '20px' }}>
+                <Grid2 item xs={12} sm={8}>
+                  <TextField
+                    label={t('player_name')}
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    fullWidth
+                  />
+                </Grid2>
+                <Grid2 item xs={12} sm={4}>
+                  <Button 
+                    onClick={handleAddPlayer} 
+                    variant="contained" 
+                    color="secondary"
+                    fullWidth
+                  >
+                    {t('add_player')}
+                  </Button>
+                </Grid2>
+              </Grid2>
+            )}
           </Box>
-          <Box>
-            <FormControl fullWidth>
-              <InputLabel>{t('voice')}</InputLabel>
-              <Select
-                value={gameState.voice}
-                onChange={(e) => handleUpdatePreferences(gameState.imageStyle, e.target.value)}
-              >
-                {availableVoices.map(voice => (
-                  <MenuItem key={voice} value={voice.toLowerCase()}>{voice}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-          {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="left" flexDirection="column">
-            <Typography variant="body2" >
-            {t('your_role')}: {gameState.playerRole}
-            </Typography>
-            <Typography variant="body2" >
-            {t('ai_role')}: {gameState.aiRole}
-            </Typography>
-          </Box>}
-          {!isKidsMode && <Box display="flex" justifyContent="space-around" alignItems="left" flexDirection="column">
-            <Typography variant="body2" >
-              {t('ai_model')}: {gameState.aiModel}
-            </Typography>
-            <Typography variant="body2" >
-              {t('theme')}: {gameState.storyTheme}
-            </Typography>
-          </Box>}
-        </Box>
-
-
-        {gameState.players.length > 0 && 
-            <Typography variant="body1" gutterBottom>
-              {t('players')}: {gameState.players.join(', ')}
-            </Typography>
-          }
-
-        {!isKidsMode && gameState.playerRole === 'DM' && (
-          <Grid2 container spacing={2} style={{ marginTop: '20px' }}>
-            <Grid2 item xs={12} sm={8}>
-              <TextField
-                label={t('player_name')}
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                fullWidth
+          <Box display="flex" flexDirection="column" height="100%">
+            <StoryContainer elevation={2} >
+              <MessageList
+                gameState={gameState}
+                mediaUrls={mediaUrls}
+                loadingFiles={loadingFilesRef.current}
+                handleGenerateAudio={handleGenerateAudio}
+                handleGenerateImage={handleGenerateImage}
+                handleImageClick={handleImageClick}
+                handleSubmitAction={handleSubmitAction}
+                isGeneratingAudio={isGeneratingAudio}
+                isGeneratingImage={isGeneratingImage}
               />
-            </Grid2>
-            <Grid2 item xs={12} sm={4}>
-              <Button 
-                onClick={handleAddPlayer} 
-                variant="contained" 
-                color="secondary"
-                fullWidth
-              >
-                {t('add_player')}
-              </Button>
-            </Grid2>
-          </Grid2>
-        )}
-
-        <ActionInput 
-          onSubmit={handleSubmitAction} 
-          setError={setError}
-          gameState={gameState}
-        />
-
-        <StoryContainer elevation={2}>
-          <MessageList
-            gameState={gameState}
-            mediaUrls={mediaUrls}
-            loadingFiles={loadingFilesRef.current}
-            handleGenerateAudio={handleGenerateAudio}
-            handleGenerateImage={handleGenerateImage}
-            handleImageClick={handleImageClick}
-            handleSubmitAction={handleSubmitAction}
-          />
-          <FullscreenImageViewer 
-            open={!!fullscreenImage} 
-            onClose={handleCloseFullscreen} 
-            imageUrl={fullscreenImage} 
-          />
-        </StoryContainer>
-
+              <FullscreenImageViewer 
+                open={!!fullscreenImage} 
+                onClose={handleCloseFullscreen} 
+                imageUrl={fullscreenImage} 
+              />
+            </StoryContainer>
+            <ActionInput 
+              onSubmit={handleSubmitAction} 
+              setError={setError}
+              gameState={gameState}
+            />
+          </Box>
+        </Box>
         <Button 
           onClick={onBackToGameList} 
           variant="contained" 

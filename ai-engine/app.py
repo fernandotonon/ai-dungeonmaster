@@ -95,6 +95,8 @@ MODEL_MAPPING = {
 }
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
+if USE_LOCAL_MODELS:
+    AVAILABLE_VOICES.append("isabela")
 
 @app.route('/llm-chat', methods=['POST'])
 def llm_chat():
@@ -190,8 +192,6 @@ def text_to_speech():
         # If successful, extract the 'content' attribute
         if isinstance(parsed_text, dict) and 'content' in parsed_text:
             text = parsed_text['content']
-        if isinstance(parsed_text, dict) and 'options' in parsed_text:
-            text += "\n".join(parsed_text['options'])
     except json.JSONDecodeError:
         # If text is not valid JSON, keep the original text
         logger.info("Text is not valid JSON, using original text.")

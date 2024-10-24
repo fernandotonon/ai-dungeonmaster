@@ -23,31 +23,35 @@ const ActionInput = ({ onSubmit, setError, gameState }) => {
 
   return (
     <ActionContainer>
-      <TextField
-        label={t('enter_action')} 
-        multiline
-        minRows={1}
-        maxRows={10}
-        value={action}
-        onChange={(e) => setAction(e.target.value)}
-        fullWidth
-        inputRef={inputRef}
-      />
-      <Box display="flex" justifyContent="space-between" marginTop="10px">
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
-          color="primary"
-        >
-          {t('submit_action')} 
-        </Button>
-        <VoiceInput 
-          onTranscript={(text) => {
-            onSubmit(text);
-          }}
-          setError={setError}
-          gameState={gameState}
+      <Box display="flex">
+        <TextField
+          label={t('enter_action')} 
+          multiline
+          minRows={1}
+          maxRows={10}
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          fullWidth
+          inputRef={inputRef}
         />
+        {inputRef?.current?.value?.length > 0 && (
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained" 
+            color="primary"
+          >
+            {t('submit_action')} 
+          </Button>
+        )}
+        {!inputRef?.current?.value?.length && (
+          <VoiceInput 
+            onTranscript={(text) => {
+              onSubmit(text);
+            }}
+            setError={setError}
+            gameState={gameState}
+          />
+        )}
       </Box>
     </ActionContainer>
   );

@@ -1,7 +1,17 @@
 import React, { useMemo } from 'react';
 import MessageItem from './MessageItem';
 
-const MessageList = ({ gameState, mediaUrls, loadingFiles, handleSubmitAction, handleGenerateAudio, handleGenerateImage, handleImageClick }) => {
+const MessageList = ({ 
+  gameState, 
+  mediaUrls, 
+  loadingFiles, 
+  handleSubmitAction, 
+  handleGenerateAudio, 
+  handleGenerateImage, 
+  handleImageClick,
+  isGeneratingAudio,
+  isGeneratingImage
+}) => {
   const memoizedMessages = useMemo(() => {
     return gameState.storyMessages.slice().reverse().map((message, index) => (
       <MessageItem
@@ -15,6 +25,8 @@ const MessageList = ({ gameState, mediaUrls, loadingFiles, handleSubmitAction, h
         handleGenerateImage={handleGenerateImage}
         handleImageClick={handleImageClick}
         handleSubmitAction={handleSubmitAction}
+        isGeneratingAudio={isGeneratingAudio}
+        isGeneratingImage={isGeneratingImage}
       />
     ));
   }, [gameState, mediaUrls, loadingFiles, handleSubmitAction, handleGenerateAudio, handleGenerateImage, handleImageClick]);

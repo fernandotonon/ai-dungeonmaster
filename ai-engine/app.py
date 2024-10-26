@@ -230,15 +230,15 @@ def text_to_speech():
 
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
-    data = request.json
-    context_prompt = data['contextPrompt']
-    current_message = data['currentMessage']
-    is_kids_mode = data.get('isKidsMode', False)
-    style = data.get('style', 'cartoon')  # Default to 'cartoon' if not provided
-    negative_prompt = data.get('negative_prompt', 'blurry, bad art, poor quality')
-    theme = data.get('theme', '')
-    
     try:
+        data = request.json
+        context_prompt = data['contextPrompt']
+        current_message = data['currentMessage']
+        is_kids_mode = data.get('isKidsMode', False)
+        style = data.get('style', 'cartoon')  # Default to 'cartoon' if not provided
+        negative_prompt = data.get('negative_prompt', 'blurry, bad art, poor quality')
+        theme = data.get('theme', '')
+    
         # Adjust the system message based on kids mode
         system_message = (
             "You are an AI that generates detailed image prompts based on story context. "

@@ -317,8 +317,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
             {darkMode ? <Brightness7 /> : <Brightness4 />}
           </IconButton>}
         </Box>
-        <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} height="100%">
-          <Box>
+        <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} >
+          <Box sx={{ minWidth: '150px' }}>
             <Box 
               display="flex" 
               justifyContent="space-between" 

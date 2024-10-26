@@ -15,7 +15,8 @@ const MessageItem = ({
   handleGenerateImage, 
   handleImageClick,
   isGeneratingAudio,
-  isGeneratingImage
+  isGeneratingImage,
+  showOptions
 }) => {
   const Message = styled(Box)(({ theme, sender, aiRole }) => ({
     marginBottom: '10px',
@@ -35,24 +36,18 @@ const MessageItem = ({
 
   const ButtonContainer = styled(Box)(({ theme }) => ({
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: theme.spacing(1),
     marginBottom: theme.spacing(1),
+    padding: '10px',
   }));
 
   const messageOptions = getMessageOptions(message.content);
 
   return (
     <Message sender={message.sender} aiRole={gameState.aiRole}>
-      {messageOptions && index === 0 && (
-        <ButtonContainer>
-          {messageOptions.map((option, index) => (
-            <Button key={index} onClick={() => handleSubmitAction(option)}>
-              {option}
-            </Button>
-          ))}
-        </ButtonContainer>
-      )}
       <Box display="flex" alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" flexDirection={{ xs: 'column', md: 'row' }}>
         <Box display="flex" alignItems="start" flexDirection="column">
           <Typography variant="subtitle1" style={{ marginRight: '10px', textAlign: 'justify' }}>
@@ -68,7 +63,7 @@ const MessageItem = ({
             )}
             {!message.audioFile && (
               <IconButton 
-                onClick={() => handleGenerateAudio(gameState.storyMessages.length - index - 1)}
+                onClick={() => handleGenerateAudio(index)}
                 disabled={loadingFiles.has(message.audioFile) || isGeneratingAudio}
               >
                 <VolumeUp />
@@ -76,7 +71,7 @@ const MessageItem = ({
             )}
             {!message.imageFile && (
               <IconButton 
-                onClick={() => handleGenerateImage(gameState.storyMessages.length - index - 1)}
+                onClick={() => handleGenerateImage(index)}
                 disabled={loadingFiles.has(message.imageFile) || isGeneratingImage}
                 style={{ marginLeft: '15px' }}
               >
@@ -99,6 +94,15 @@ const MessageItem = ({
           ) : null
         )}
       </Box>
+      {messageOptions && showOptions && (
+        <ButtonContainer>
+          {messageOptions.map((option, index) => (
+            <Button key={index} onClick={() => handleSubmitAction(option)} variant="outlined" color="primary">
+              {option}
+            </Button>
+          ))}
+        </ButtonContainer>
+      )}
     </Message>
   );
 };

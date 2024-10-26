@@ -13,7 +13,7 @@ const MessageList = ({
   isGeneratingImage
 }) => {
   const memoizedMessages = useMemo(() => {
-    return gameState.storyMessages.slice().reverse().map((message, index) => (
+    return gameState.storyMessages.slice().map((message, index) => (
       <MessageItem
         key={message.id}
         message={message}
@@ -27,6 +27,7 @@ const MessageList = ({
         handleSubmitAction={handleSubmitAction}
         isGeneratingAudio={isGeneratingAudio}
         isGeneratingImage={isGeneratingImage}
+        showOptions={index === gameState.storyMessages.length - 1}
       />
     ));
   }, [gameState, mediaUrls, loadingFiles, handleSubmitAction, handleGenerateAudio, handleGenerateImage, handleImageClick]);

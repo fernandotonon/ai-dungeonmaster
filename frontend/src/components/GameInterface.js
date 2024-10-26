@@ -35,10 +35,10 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const [mediaUrls, setMediaUrls] = useState({ images: {}, audios: {} });
   const loadingFilesRef = useRef(new Set());
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const storyContainerRef = useRef(null);
 
   const GameContainer = styled(Paper)(({ theme }) => ({
     padding: '20px',
-    marginTop: '20px',
     backgroundImage: `url(${backgroundImage})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
@@ -52,20 +52,68 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   }));
 
   const StoryContainer = styled(Paper)(({ theme }) => ({
-    maxHeight: '400px',
+    height: 'calc(100vh - 300px)',
     overflowY: 'auto',
     padding: '10px',
-    marginTop: '20px',
     backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
   }));
 
+  const scrollToBottom = () => {
+    const container = storyContainerRef.current;
+    
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+      sessionStorage.setItem('scrollPosition', container.scrollTop);
+    }
+  };
+  
   useEffect(() => {
     setBackgroundImage(getRandomBackground(isKidsMode));
+
+    const container = storyContainerRef.current;
+
+    // Scroll to the bottom after all content is fully loaded
+    const handleLoad = () => {
+      requestAnimationFrame(scrollToBottom);
+    };
+
+    // Add the event listener for when all content has loaded
+    window.addEventListener('load', handleLoad);
+
+    const timer = setTimeout(scrollToBottom, 0);
+
     return () => {
       Object.values(mediaUrls.images).forEach(URL.revokeObjectURL);
       Object.values(mediaUrls.audios).forEach(URL.revokeObjectURL);
+      container?.removeEventListener('scroll', handleLoad);
+      clearTimeout(timer);
     };
   }, []);
+  setTimeout(scrollToBottom, 0);
+  // Add this useEffect to handle auto-scrolling
+  useEffect(() => {
+    const container = storyContainerRef.current;
+    let scrollPosition = sessionStorage.getItem('scrollPosition') || 0;
+  
+    // Save scroll position before rerender
+    const saveScrollPosition = () => {
+      sessionStorage.setItem('scrollPosition', container.scrollTop);
+      scrollPosition = container.scrollTop;
+    };
+  
+    // Restore scroll position after rerender
+    const restoreScrollPosition = () => {
+      container.scrollTop = scrollPosition;
+    };
+  
+    // Set up listeners for saving/restoring scroll position
+    container.addEventListener('scroll', saveScrollPosition);
+    const timer = setTimeout(restoreScrollPosition, 0);
+    return () => {
+      container?.removeEventListener('scroll', saveScrollPosition);
+      clearTimeout(timer);
+    };
+  }, [gameState.storyMessages]);
 
   // Function to validate cached file
   const validateCachedFile = async (url, fileType) => {
@@ -257,7 +305,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const handleCloseFullscreen = () => {
     setFullscreenImage(null);
   };
-
+  scrollToBottom();
   return (
     <GameContainer elevation={3}>
       <ContentContainer>
@@ -354,7 +402,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
             )}
           </Box>
           <Box display="flex" flexDirection="column" height="100%">
-            <StoryContainer elevation={2} >
+            <StoryContainer elevation={2} ref={storyContainerRef}>
               <MessageList
                 gameState={gameState}
                 mediaUrls={mediaUrls}

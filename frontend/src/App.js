@@ -11,7 +11,6 @@ import { useKidsMode } from './KidsModeContext';
 import CookieConsent from './components/CookieConsent';
 
 const AppContainer = styled(Container)(({ theme }) => ({
-  maxWidth: '1500px',
   height: '100%',
   margin: '0 auto',
   padding: theme.spacing(2),
@@ -120,9 +119,7 @@ function App() {
   }
 
   return (
-    <AppContainer>
-      <Title variant="h1">AI DungeonMaster</Title>
-      
+    <AppContainer maxWidth="xl">
       <ErrorAlert error={error} clearError={clearError} />
 
       {!user && <AuthInterface onLogin={handleLogin} setError={setError} />}

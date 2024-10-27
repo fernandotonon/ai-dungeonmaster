@@ -7,7 +7,7 @@ import GameInterface from './components/GameInterface';
 import ErrorAlert from './components/ErrorAlert';
 import api from './services/api';
 import { useTranslation } from 'react-i18next'; 
-import { useKidsMode } from './KidsModeContext';
+import { useKidsMode } from './contexts/KidsModeContext';
 import CookieConsent from './components/CookieConsent';
 
 const AppContainer = styled(Container)(({ theme }) => ({
@@ -146,6 +146,7 @@ function App() {
           }}
           setError={setError}
           availableVoices={availableVoices}
+          user={user}
         />
       )}
       <CookieConsent />

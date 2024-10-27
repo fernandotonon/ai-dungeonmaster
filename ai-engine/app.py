@@ -46,10 +46,14 @@ else:
 torch.set_num_threads(4)  # Adjust this based on your CPU cores
 
 # Load Whisper model for local processing
-stt_device = torch.device("cpu")
-whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-base")
-whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base").to(stt_device)
-
+stt_device = torch.device("cuda")
+whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-small")
+whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small",
+                                                                device_map="auto",
+                                                                low_cpu_mem_usage=True,
+                                                                max_memory={0: "2GB", "cpu": "8GB"}
+                                                                ).to(stt_device)
+    
 # Configure Google AI
 configure(api_key=os.getenv("GOOGLE_API_KEY"))
 

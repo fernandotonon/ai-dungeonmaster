@@ -1,6 +1,6 @@
 import React from 'react';
 import { Switch, FormControlLabel } from '@mui/material';
-import { useKidsMode } from '../KidsModeContext';
+import { useKidsMode } from '../contexts/KidsModeContext';
 
 const KidsModeToggle = () => {
   const { isKidsMode, toggleKidsMode } = useKidsMode();

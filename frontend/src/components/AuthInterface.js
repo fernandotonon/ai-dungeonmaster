@@ -11,10 +11,10 @@ import {
 } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { useTheme } from '../ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 import { getRandomBackground } from '../utils/backgroundUtils';
-import { useKidsMode } from '../KidsModeContext';
+import { useKidsMode } from '../contexts/KidsModeContext';
 import { useTranslation } from 'react-i18next'; 
 
 const BackgroundContainer = styled(Box)(({ theme }) => ({

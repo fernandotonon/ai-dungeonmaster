@@ -4,8 +4,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { ThemeProvider } from './ThemeContext';
-import { KidsModeProvider } from './KidsModeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { KidsModeProvider } from './contexts/KidsModeContext';
 import './i18n';  
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

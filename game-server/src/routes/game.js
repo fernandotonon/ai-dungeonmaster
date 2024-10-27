@@ -4,6 +4,7 @@ const Game = require('../models/Game');
 const router = express.Router();
 const axios = require('axios');
 const { audioBucketName, imageBucketName, deleteFile } = require('../services/minioService');
+const { emitGameUpdate } = require('../services/socketService');
 
 router.get('/user-games', verifyToken, async (req, res) => {
   try {
@@ -26,7 +27,16 @@ router.post('/init-game', verifyToken, async (req, res) => {
       imageStyle,
       voice,
       user: req.user._id,
-      storyTheme
+      storyTheme,
+      players: [{
+        userId: req.user._id,
+        username: req.user.username,
+        role: playerRole,
+        isHost: true,
+        online: true
+      }],
+      status: 'waiting',
+      isMultiplayer: false
     });
     
     if(storyTheme) {
@@ -44,6 +54,7 @@ router.post('/init-game', verifyToken, async (req, res) => {
     }
   
     await gameState.save();
+    emitGameUpdate(gameState._id, gameState);
     res.json({ message: 'Game initialized', gameState });
   } catch (error) {
     console.error('Error initializing game:', error);
@@ -98,22 +109,25 @@ router.put('/update-game', verifyToken, async (req, res) => {
 
 router.post('/add-player', verifyToken, async (req, res) => {
   try {
-    const { playerName, gameId } = req.body;
-
-    if (!gameId) {
-      return res.status(400).json({ error: 'Game ID is required' });
-    }
-
+    const { username, gameId, role } = req.body;
     const game = await Game.findOneAndUpdate(
-      { _id: gameId, user: req.user._id },
-      { $addToSet: { players: playerName }, $set: { updatedAt: new Date() } },
+      { _id: gameId },
+      { 
+        $addToSet: { 
+          players: {
+            userId: req.user._id,
+            username,
+            role,
+            isHost: game.players.length === 0, // First player is host
+            online: true
+          }
+        },
+        $set: { isMultiplayer: true, updatedAt: new Date() }
+      },
       { new: true }
     );
 
-    if (!game) {
-      return res.status(404).json({ error: 'Game not found' });
-    }
-
+    emitGameUpdate(gameId, game);
     res.json({ gameState: game });
   } catch (error) {
     console.error('Error adding player:', error);
@@ -142,6 +156,75 @@ router.delete('/:id', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error deleting game:', error);
     res.status(500).json({ error: 'Error deleting game' });
+  }
+});
+
+// Join game
+router.post('/join-game', verifyToken, async (req, res) => {
+  try {
+    const { gameId, role } = req.body;
+    const game = await Game.findById(gameId);
+
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    if (game.players.length >= game.maxPlayers) {
+      return res.status(400).json({ error: 'Game is full' });
+    }
+
+    const playerExists = game.players.find(p => p.userId.equals(req.user._id));
+    if (playerExists) {
+      return res.status(400).json({ error: 'Already in game' });
+    }
+
+    game.players.push({
+      userId: req.user._id,
+      username: req.user.username,
+      role,
+      isHost: false,
+      online: true
+    });
+
+    await game.save();
+    emitGameUpdate(gameId, game);
+    res.json({ gameState: game });
+  } catch (error) {
+    res.status(500).json({ error: 'Error joining game' });
+  }
+});
+
+// Leave game
+router.post('/leave-game', verifyToken, async (req, res) => {
+  try {
+    const { gameId } = req.body;
+    const game = await Game.findOneAndUpdate(
+      { _id: gameId },
+      { 
+        $pull: { 
+          players: { userId: req.user._id }
+        },
+        $set: { updatedAt: new Date() }
+      },
+      { new: true }
+    );
+
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // If there are remaining players and the leaving player was the host,
+    // assign a new host
+    if (game.players.length > 0 && !game.players.some(p => p.isHost)) {
+      game.players[0].isHost = true;
+      await game.save();
+    }
+
+    emitGameUpdate(gameId, game);
+    res.json({ message: 'Successfully left the game' });
+  } catch (error) {
+    console.error('Error leaving game:', error);
+    res.status(500).json({ error: 'Error leaving game' });
   }
 });
 

@@ -18,12 +18,12 @@ import {
 } from '@mui/material';
 import { Brightness4, Brightness7, Settings } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { useTheme } from '../ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next'; 
 import api from '../services/api';
 import { getRandomBackground } from '../utils/backgroundUtils';
 import KidsModeToggle from '../controls/KidsModeToggle'; 
-import { useKidsMode } from '../KidsModeContext';
+import { useKidsMode } from '../contexts/KidsModeContext';
 import EditableGameTitle from '../controls/EditableGameTitleInput';
 import TextInput from '../controls/TextInput';
 import UserSettings from './UserSettings';

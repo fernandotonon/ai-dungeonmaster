@@ -10,20 +10,24 @@ import {
   Typography,
   Paper,
   Grid2,
-  Box
+  Box,
+  Divider
 } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { useTheme } from '../ThemeContext';
-import { useKidsMode } from '../KidsModeContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useKidsMode } from '../contexts/KidsModeContext';
 import { useTranslation } from 'react-i18next'; 
 import api from '../services/api';
 import ActionInput from '../controls/ActionInput';
 import { getRandomBackground } from '../utils/backgroundUtils';
 import FullscreenImageViewer from './FullscreenImageViewer';
 import MessageList from './MessageList';
+import { useSocket } from '../contexts/SocketContext';
+import PlayersList from './PlayerList';
+import InviteDialog from './InviteDialog';
 
-const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, availableVoices }) => {
+const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, availableVoices, user }) => {
   const { t, i18n } = useTranslation(); 
   const [backgroundImage, setBackgroundImage] = useState('');
   const [playerName, setPlayerName] = useState('');
@@ -36,6 +40,8 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const loadingFilesRef = useRef(new Set());
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const storyContainerRef = useRef(null);
+  const socket = useSocket();
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   const GameContainer = styled(Paper)(({ theme }) => ({
     padding: '20px',
@@ -305,6 +311,44 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const handleCloseFullscreen = () => {
     setFullscreenImage(null);
   };
+
+  const handleLeaveGame = async () => {
+    try {
+      await api.game.leaveGame(gameState._id);
+      socket.emit('leaveGame', gameState._id);
+      onBackToGameList();
+    } catch (error) {
+      console.error('Error leaving game:', error);
+      setError('Failed to leave game');
+    }
+  };
+
+  useEffect(() => {
+    if (socket && gameState._id) {
+      socket.emit('joinGame', gameState._id);
+
+      socket.on('gameUpdate', (updatedGameState) => {
+        setGameState(updatedGameState);
+      });
+
+      return () => {
+        socket.emit('leaveGame', gameState._id);
+        socket.off('gameUpdate');
+      };
+    }
+  }, [socket, gameState._id]);
+
+  const handleInvitePlayer = async (inviteData) => {
+    try {
+      const response = await api.game.addPlayer(gameState._id, inviteData.username, inviteData.role);
+      setGameState(response.data.gameState);
+      setShowInviteDialog(false);
+    } catch (error) {
+      console.error('Error inviting player:', error);
+      setError('Failed to invite player');
+    }
+  };
+
   scrollToBottom();
   return (
     <GameContainer elevation={3}>
@@ -318,7 +362,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
           </IconButton>}
         </Box>
         <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} >
-          <Box sx={{ minWidth: '150px' }}>
+          <Box sx={{ minWidth: '150px', marginRight: 1 }}>
             <Box 
               display="flex" 
               justifyContent="space-between" 
@@ -372,36 +416,27 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
             </Box>
 
 
-            {gameState.players.length > 0 && 
-                <Typography variant="body1" gutterBottom>
-                  {t('players')}: {gameState.players.join(', ')}
-                </Typography>
-              }
-
-            {!isKidsMode && gameState.playerRole === 'DM' && (
-              <Grid2 container spacing={2} style={{ marginTop: '20px' }}>
-                <Grid2 item xs={12} sm={8}>
-                  <TextField
-                    label={t('player_name')}
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    fullWidth
-                  />
-                </Grid2>
-                <Grid2 item xs={12} sm={4}>
-                  <Button 
-                    onClick={handleAddPlayer} 
-                    variant="contained" 
-                    color="secondary"
-                    fullWidth
-                  >
-                    {t('add_player')}
-                  </Button>
-                </Grid2>
-              </Grid2>
-            )}
+            <Box sx={{ marginBottom: 2, marginTop: 2, width: '100%' }}>
+              <Typography variant="h6">{t('players')}</Typography>
+              <Divider sx={{ my: 1, width: '100%' }} />
+              <PlayersList
+                players={gameState.players}
+                currentUser={user}
+                onLeaveGame={() => handleLeaveGame(gameState._id)}
+              />
+              {gameState.players.find(p => p.userId === user.userId)?.isHost && (
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => setShowInviteDialog(true)}
+                  sx={{ mt: 1 }}
+                >
+                  {t('invite_players')}
+                </Button>
+              )}
+            </Box>
           </Box>
-          <Box display="flex" flexDirection="column" height="100%">
+          <Box display="flex" flexDirection="column" sx={{ width: '100%' }}>
             <StoryContainer elevation={2} ref={storyContainerRef}>
               <MessageList
                 gameState={gameState}
@@ -436,6 +471,12 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
           {t('back_to_game_list')}
         </Button>
       </ContentContainer>
+      <InviteDialog
+        open={showInviteDialog}
+        onClose={() => setShowInviteDialog(false)}
+        onInvite={handleInvitePlayer}
+        gameId={gameState._id}
+      />
     </GameContainer>
   );
 };

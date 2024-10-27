@@ -66,7 +66,15 @@ const resources = {
       registration_failed: "Registration failed",
       login_failed: "Login failed",
       title: "Title",
-      ttsTrainingText: "The quick brown fox jumps over the lazy dog. Words flow naturally in speech."
+      ttsTrainingText: "The quick brown fox jumps over the lazy dog. Words flow naturally in speech.",
+      invite_players: "Invite Players",
+      share_link: "Share this link",
+      or_invite_directly: "Or invite directly",
+      role: "Role",
+      player: "Player",
+      observer: "Observer",
+      cancel: "Cancel",
+      invite: "Invite"
     }
   },
   ptbr: {
@@ -132,7 +140,15 @@ const resources = {
       registration_failed: "Falha no registro",
       login_failed: "Falha no login",
       title: "Título",
-      ttsTrainingText: "A rápida raposa marrom salta sobre o cachorro preguiçoso. As palavras fluem na fala."
+      ttsTrainingText: "A rápida raposa marrom salta sobre o cachorro preguiçoso. As palavras fluem na fala.",
+      invite_players: "Convidar Jogadores",
+      share_link: "Compartilhe este link",
+      or_invite_directly: "Ou convide diretamente",
+      role: "Função",
+      player: "Jogador",
+      observer: "Observador",
+      cancel: "Cancelar",
+      invite: "Convidar"
     }
   },
   es: {
@@ -198,7 +214,15 @@ const resources = {
       registration_failed: "Error en el registro",
       login_failed: "Error en el inicio de sesión",
       title: "Título",
-      ttsTrainingText: "El rápido zorro marrón salta sobre el perro perezoso. Las palabras fluyen naturalmente."
+      ttsTrainingText: "El rápido zorro marrón salta sobre el perro perezoso. Las palabras fluyen naturalmente.",
+      invite_players: "Invitar Jugadores",
+      share_link: "Compartir este enlace",
+      or_invite_directly: "O invitar directamente",
+      role: "Rol",
+      player: "Jugador",
+      observer: "Observador",
+      cancel: "Cancelar",
+      invite: "Invitar"
     }
   },
   de: {
@@ -264,7 +288,15 @@ const resources = {
       registration_failed: "Registrierung fehlgeschlagen",
       login_failed: "Anmeldung fehlgeschlagen",
       title: "Titel",
-      ttsTrainingText: "Der schnelle braune Fuchs springt über den faulen Hund. Wörter fließen natürlich."
+      ttsTrainingText: "Der schnelle braune Fuchs springt über den faulen Hund. Wörter fließen natürlich.",
+      invite_players: "Spieler einladen",
+      share_link: "Diesen Link teilen",
+      or_invite_directly: "Oder direkt einladen",
+      role: "Rolle",
+      player: "Spieler",
+      observer: "Beobachter",
+      cancel: "Abbrechen",
+      invite: "Einladen"
     }
   },
   it: {
@@ -330,7 +362,15 @@ const resources = {
       registration_failed: "Registrazione fallita",
       login_failed: "Accesso fallito",
       title: "Titolo",
-      ttsTrainingText: "Il rapido cane marrone salta sopra il volpe pigro. Le parole scorrono nel discorso."
+      ttsTrainingText: "Il rapido cane marrone salta sopra il volpe pigro. Le parole scorrono nel discorso.",
+      invite_players: "Invita Giocatori",
+      share_link: "Condividi questo link",
+      or_invite_directly: "Oppure invita direttamente",
+      role: "Ruolo",
+      player: "Giocatore",
+      observer: "Observatore",
+      cancel: "Annulla",
+      invite: "Invita"
     }
   },
   fr: {
@@ -396,7 +436,15 @@ const resources = {
       registration_failed: "Échec de l'inscription",
       login_failed: "Échec de la connexion",
       title: "Titre",
-      ttsTrainingText: "Le renard brun rapide saute par-dessus le chien paresseux. Les mots coulent naturellement."
+      ttsTrainingText: "Le renard brun rapide saute par-dessus le chien paresseux. Les mots coulent naturellement.",
+      invite_players: "Inviter des Joueurs",
+      share_link: "Partager ce lien",
+      or_invite_directly: "Ou inviter directement",
+      role: "Rôle",
+      player: "Joueur",
+      observer: "Observateur",
+      cancel: "Annuler",
+      invite: "Inviter"
     }
   }
   // Add translations for other languages here

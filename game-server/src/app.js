@@ -16,7 +16,14 @@ connectDB();
 initializeBuckets();
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = ['http://localhost', 'http://192.168.18.3', 'https://192.168.18.3', 'https://fernandotonon.github.io'];
+    const allowedOrigins = [
+      'http://localhost', 
+      'http://192.168.18.3', 
+      'https://192.168.18.3', 
+      'https://fernandotonon.github.io',
+      'https://rpg.ftonon.uk',
+      'https://api-rpg.ftonon.uk'
+    ];
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {

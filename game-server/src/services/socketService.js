@@ -2,11 +2,19 @@ const { Server } = require('socket.io');
 const Game = require('../models/Game');
 
 let io;
+const onlineUsers = new Map();
 
 const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: ['http://localhost:3000', 'http://192.168.18.3', 'https://192.168.18.3', 'https://fernandotonon.github.io'],
+      origin: [
+        'http://localhost:3000', 
+        'http://192.168.18.3', 
+        'https://192.168.18.3', 
+        'https://fernandotonon.github.io',
+        'https://rpg.ftonon.uk',
+        'https://api-rpg.ftonon.uk'
+      ],
       methods: ['GET', 'POST'],
       credentials: true
     }
@@ -70,6 +78,25 @@ const initializeSocket = (server) => {
       } catch (error) {
         console.error('Error handling disconnect:', error);
       }
+    });
+
+    socket.on('userConnected', (user) => {
+      onlineUsers.set(user.userId, {
+        userId: user.userId,
+        username: user.username,
+        socketId: socket.id
+      });
+      io.emit('onlineUsers', Array.from(onlineUsers.values()));
+    });
+
+    socket.on('disconnect', () => {
+      for (const [userId, user] of onlineUsers.entries()) {
+        if (user.socketId === socket.id) {
+          onlineUsers.delete(userId);
+          break;
+        }
+      }
+      io.emit('onlineUsers', Array.from(onlineUsers.values()));
     });
   });
 };

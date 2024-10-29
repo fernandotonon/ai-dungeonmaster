@@ -74,7 +74,8 @@ const resources = {
       player: "Player",
       observer: "Observer",
       cancel: "Cancel",
-      invite: "Invite"
+      invite: "Invite",
+      online_players: "Online Players"
     }
   },
   ptbr: {
@@ -148,7 +149,8 @@ const resources = {
       player: "Jogador",
       observer: "Observador",
       cancel: "Cancelar",
-      invite: "Convidar"
+      invite: "Convidar",
+      online_players: "Jogadores Online"
     }
   },
   es: {
@@ -222,7 +224,8 @@ const resources = {
       player: "Jugador",
       observer: "Observador",
       cancel: "Cancelar",
-      invite: "Invitar"
+      invite: "Invitar",
+      online_players: "Jugadores en Línea"
     }
   },
   de: {
@@ -296,7 +299,8 @@ const resources = {
       player: "Spieler",
       observer: "Beobachter",
       cancel: "Abbrechen",
-      invite: "Einladen"
+      invite: "Einladen",
+      online_players: "Spieler Online"
     }
   },
   it: {
@@ -370,7 +374,8 @@ const resources = {
       player: "Giocatore",
       observer: "Observatore",
       cancel: "Annulla",
-      invite: "Invita"
+      invite: "Invita",
+      online_players: "Giocatori Online"
     }
   },
   fr: {
@@ -444,7 +449,8 @@ const resources = {
       player: "Joueur",
       observer: "Observateur",
       cancel: "Annuler",
-      invite: "Inviter"
+      invite: "Inviter",
+      online_players: "Joueurs en Ligne"
     }
   }
   // Add translations for other languages here

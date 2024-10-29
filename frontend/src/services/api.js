@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.API_URL || 'https://192.168.18.3:3000' || 'https://baboon-neutral-mutt.ngrok-free.app';
+const API_URL = 'https://api-rpg.ftonon.uk';
 
 const api = axios.create({
   baseURL: API_URL,

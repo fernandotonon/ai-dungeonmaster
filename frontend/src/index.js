@@ -6,6 +6,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { KidsModeProvider } from './contexts/KidsModeContext';
+import { SocketProvider } from './contexts/SocketContext';
 import './i18n';  
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -13,8 +14,10 @@ root.render(
   <React.StrictMode>
     <ThemeProvider>
       <KidsModeProvider>
-        <CssBaseline />
-        <App />
+        <SocketProvider>
+          <CssBaseline />
+          <App />
+        </SocketProvider>
       </KidsModeProvider>
     </ThemeProvider>
   </React.StrictMode>

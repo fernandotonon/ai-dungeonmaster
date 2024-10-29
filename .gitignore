@@ -5,3 +5,7 @@ venv
 # SSL certificate files
 *.key
 *.cert
+
+# Cloudflare
+cloudflare-tunnel-credentials.json
+cloudflare-config.yml

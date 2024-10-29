@@ -54,13 +54,14 @@ services:
     depends_on:
       - game-server
 
-  ngrok-backend:
-    image: ngrok/ngrok
+  cloudflared:
+    image: cloudflare/cloudflared
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflare-config.yml:/etc/cloudflared/config.yml:ro
+      - ./cloudflare-tunnel-credentials.json:/etc/cloudflared/credentials.json:ro
     environment:
-      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
-    command: http --url baboon-neutral-mutt.ngrok-free.app game-server:3000
-    ports:
-      - "4040:4040"
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - game-server
     networks:

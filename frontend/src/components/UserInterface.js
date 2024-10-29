@@ -27,6 +27,9 @@ import { useKidsMode } from '../contexts/KidsModeContext';
 import EditableGameTitle from '../controls/EditableGameTitleInput';
 import TextInput from '../controls/TextInput';
 import UserSettings from './UserSettings';
+import OnlinePlayersList from './OnlinePlayersList';
+import { useSocket } from '../contexts/SocketContext';
+
 // Supported languages
 const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
 
@@ -56,6 +59,10 @@ const UserInterface = ({
   const newGameTitleRef = useRef(null);
   const [imageStyle, setImageStyle] = useState(isKidsMode ? 'cartoon' : 'fantasy illustration');
   const [storyTheme, setStoryTheme] = useState(isKidsMode ? 'Fairy Tale Kingdom' : 'Western');
+
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const { socket } = useSocket()
+
   const kidsThemes = ['Enchanted Forest Adventures', 'Space Exploration', 'Pirate Treasure Hunt', 
     'Knight and Dragon Friend', 'Fairy Tale Kingdom'];
   const adultThemes = [
@@ -110,6 +117,24 @@ const UserInterface = ({
       ? (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)')
       : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'),
   }));
+
+  useEffect(() => {
+    console.log('User connected:', user, socket);
+    if (socket && user) {
+      socket.emit('userConnected', {
+        userId: user.userId,
+        username: user.username
+      });
+
+      socket.on('onlineUsers', (users) => {
+        setOnlineUsers(users);
+      });
+
+      return () => {
+        socket.off('onlineUsers');
+      };
+    }
+  }, [socket, user]);
 
   useEffect(() => {
     setBackgroundImage(getRandomBackground(isKidsMode));
@@ -300,6 +325,7 @@ const UserInterface = ({
         >
           {`${t('newGame')} ${!isKidsMode ? t('asPlayer') : ""}`}
         </Button>
+        <OnlinePlayersList onlineUsers={onlineUsers} />
         </Box>
         </Box>
         {showUserSettings && (

@@ -57,6 +57,9 @@ app.use((req, res, next) => {
 app.use('/auth', authRoutes);
 app.use('/game', gameRoutes);
 app.use('/ai', aiRoutes);
+app.use('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 
 module.exports = app;

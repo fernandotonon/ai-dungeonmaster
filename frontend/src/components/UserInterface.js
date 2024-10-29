@@ -119,7 +119,6 @@ const UserInterface = ({
   }));
 
   useEffect(() => {
-    console.log('User connected:', user, socket);
     if (socket && user) {
       socket.emit('userConnected', {
         userId: user.userId,

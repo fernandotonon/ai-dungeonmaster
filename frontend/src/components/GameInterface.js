@@ -38,7 +38,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const loadingFilesRef = useRef(new Set());
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const storyContainerRef = useRef(null);
-  const socket = useSocket();
+  const { socket } = useSocket();
   const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   const GameContainer = styled(Paper)(({ theme }) => ({

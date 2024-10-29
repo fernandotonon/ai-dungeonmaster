@@ -9,6 +9,7 @@ import api from './services/api';
 import { useTranslation } from 'react-i18next'; 
 import { useKidsMode } from './contexts/KidsModeContext';
 import CookieConsent from './components/CookieConsent';
+import ServerStatus from './components/ServerStatus';
 
 const AppContainer = styled(Container)(({ theme }) => ({
   height: '100%',
@@ -31,6 +32,7 @@ function App() {
   const { t, i18n } = useTranslation();
   const { isKidsMode } = useKidsMode();
   const [availableVoices, setAvailableVoices] = useState([]);
+  const [isServerDown, setIsServerDown] = useState(false);
 
   const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
@@ -40,6 +42,9 @@ function App() {
   useEffect(() => {
     checkLoginStatus();
     i18n.changeLanguage(systemLanguage.replace('-','')); 
+    checkServerStatus();
+    const interval = setInterval(checkServerStatus, 30000); 
+    return () => clearInterval(interval);
   }, []);
 
   const checkLoginStatus = async () => {
@@ -114,12 +119,22 @@ function App() {
     }
   };
 
+  const checkServerStatus = async () => {
+    try {
+      await api.health();
+      setIsServerDown(false);
+    } catch (error) {
+      setIsServerDown(true);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
 
   return (
     <AppContainer maxWidth="xl">
+      <ServerStatus isServerDown={isServerDown} />
       <ErrorAlert error={error} clearError={clearError} />
 
       {!user && <AuthInterface onLogin={handleLogin} setError={setError} />}

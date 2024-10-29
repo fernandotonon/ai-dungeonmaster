@@ -75,7 +75,8 @@ const resources = {
       observer: "Observer",
       cancel: "Cancel",
       invite: "Invite",
-      online_players: "Online Players"
+      online_players: "Online Players",
+      server_down_message: "Server is currently unavailable. We're working on it!"
     }
   },
   ptbr: {
@@ -150,7 +151,8 @@ const resources = {
       observer: "Observador",
       cancel: "Cancelar",
       invite: "Convidar",
-      online_players: "Jogadores Online"
+      online_players: "Jogadores Online",
+      server_down_message: "O servidor está indisponível no momento. Estamos trabalhando nisso!"
     }
   },
   es: {
@@ -225,7 +227,8 @@ const resources = {
       observer: "Observador",
       cancel: "Cancelar",
       invite: "Invitar",
-      online_players: "Jugadores en Línea"
+      online_players: "Jugadores en Línea",
+      server_down_message: "El servidor está actualmente indisponible. Estamos trabajando en ello!"
     }
   },
   de: {
@@ -300,7 +303,8 @@ const resources = {
       observer: "Beobachter",
       cancel: "Abbrechen",
       invite: "Einladen",
-      online_players: "Spieler Online"
+      online_players: "Spieler Online",
+      server_down_message: "Der Server ist derzeit nicht verfügbar. Wir arbeiten daran!"
     }
   },
   it: {
@@ -375,7 +379,8 @@ const resources = {
       observer: "Observatore",
       cancel: "Annulla",
       invite: "Invita",
-      online_players: "Giocatori Online"
+      online_players: "Giocatori Online",
+      server_down_message: "Il server è attualmente indisponibile. Stiamo lavorando su questo!"
     }
   },
   fr: {
@@ -450,7 +455,8 @@ const resources = {
       observer: "Observateur",
       cancel: "Annuler",
       invite: "Inviter",
-      online_players: "Joueurs en Ligne"
+      online_players: "Joueurs en Ligne",
+      server_down_message: "Le serveur est actuellement indisponible. Nous y travaillons!"
     }
   }
   // Add translations for other languages here

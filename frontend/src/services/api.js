@@ -84,6 +84,7 @@ const apiServices = {
   auth,
   game,
   ai,
+  health: () => api.get('/health'),
 };
 
 export default apiServices;

@@ -48,7 +48,7 @@
       "last 1 safari version"
     ]
   },
-  "homepage": "https://fernandotonon.github.io/ai-dungeonmaster",
+  "homepage": "https://rpg.ftonon.uk",
   "devDependencies": {
     "gh-pages": "^6.1.1",
     "prettier": "^3.3.3"

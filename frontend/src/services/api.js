@@ -4,15 +4,22 @@ const API_URL = 'https://api-rpg.ftonon.uk';
 
 const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true // Required to send cookies with requests
 });
 
+const skipAuthHeader = [
+  '/health',
+  '/auth/login',
+  '/auth/register',
+  '/ai/models',
+  '/ai/available-voices',
+]
+
 api.interceptors.request.use(config => {
-  config.headers['ngrok-skip-browser-warning'] = 'true'; // Set the header
   // add token from session storage
   const token = sessionStorage.getItem('token');
-  if (token) {
+  if (token && !skipAuthHeader.includes(config.url)) {
     config.headers.Authorization = token;
+    config.withCredentials = true;
   }
   return config;
 }, error => {

@@ -74,6 +74,7 @@ router.post('/story', verifyToken, async (req, res) => {
 router.get('/models', async (req, res) => {
   try {
     const response = await axios.get('http://192.168.18.3:5000/models');
+    res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     res.json(response.data);
   } catch (error) {
     console.error('Error fetching AI models:', error);
@@ -206,6 +207,7 @@ router.post('/generate-audio', verifyToken, async (req, res) => {
 router.get('/available-voices', async (req, res) => {
   try {
     const response = await axios.get('http://192.168.18.3:5000/available-voices');
+    res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     res.json(response.data);
   } catch (error) {
     console.error('Error fetching available voices:', error);

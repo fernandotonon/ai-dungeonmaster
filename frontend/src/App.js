@@ -17,12 +17,6 @@ const AppContainer = styled(Container)(({ theme }) => ({
   padding: theme.spacing(2),
 }));
 
-const Title = styled(Typography)(({ theme }) => ({
-  fontSize: '1.5rem',
-  color: theme.palette.primary.main,
-  marginBottom: theme.spacing(2),
-}));
-
 function App() {
   const [user, setUser] = useState(null);
   const [gameState, setGameState] = useState(null);

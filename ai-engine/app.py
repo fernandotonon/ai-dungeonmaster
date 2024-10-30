@@ -17,7 +17,7 @@ from PIL import Image
 from diffusers import DiffusionPipeline
 from torch.cuda.amp import autocast
 import base64
-from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizer, BitsAndBytesConfig
 from huggingface_hub import login
 import json
 
@@ -71,9 +71,13 @@ try:
     model_id = "meta-llama/Llama-3.2-1B-Instruct"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
+    quantization_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        llm_int8_enable_fp32_cpu_offload=True,
+    )
     llm_model = LlamaForCausalLM.from_pretrained(
         model_id,
-        torch_dtype=torch.float16, 
+        quantization_config=quantization_config,
         device_map="auto",
         low_cpu_mem_usage=True,
         max_memory={0: "4GB", "cpu": "16GB"}
@@ -95,7 +99,7 @@ MODEL_MAPPING = {
     'gpt4': 'gpt-4',
     'gpt35-turbo': 'gpt-3.5-turbo',
     'gemini-pro': 'gemini-pro',
-    'llama32': 'llama32'
+    'llama': 'llama'
 }
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
@@ -332,14 +336,10 @@ def generate_response(prompt, model, is_kids_mode=False, language='', ai_role='D
             "Keep your responses concise and relevant to the game context."
         )
 
-        if ai_role == 'DM':
+        if ai_role == 'DM' and model != 'llama':
             system_message += (
-                "When acting as Dungeon Master, respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)."
+                "Respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)."
                 "e.g. { 'role': 'Dungeon Master', 'content': 'Story content', 'options': ['Option 1', 'Option 2', ...] }."
-            )
-        else:
-            system_message += (
-                "When acting as Player, respond in plain text."
             )
 
         if is_kids_mode:
@@ -364,7 +364,7 @@ def generate_response(prompt, model, is_kids_mode=False, language='', ai_role='D
             
             response = gemini_model.generate_content([system_message, prompt])
             generated_text = response.text
-        elif model == 'llama32':
+        elif model == 'llama':
             if language:
                 prompt += f"\nRespond in language ({language})."
             full_prompt = f"{system_message}\nUser: {prompt}\nAssistant:"

@@ -13,11 +13,7 @@ from google.generativeai import GenerativeModel, configure
 import google.generativeai as genai
 from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler, AutoPipelineForText2Image, StableDiffusion3Pipeline
 from io import BytesIO
-from PIL import Image
-from diffusers import DiffusionPipeline
-from torch.cuda.amp import autocast
 import base64
-from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizer, BitsAndBytesConfig
 from huggingface_hub import login
 import json
 
@@ -67,64 +63,17 @@ pipe.to("cpu")
 # torch.cuda.empty_cache()
 # pipe_vid = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid", torch_dtype=torch.float16).to(device)
 
-try:
-    model_id = "meta-llama/Llama-3.2-1B-Instruct"
-
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    quantization_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        llm_int8_enable_fp32_cpu_offload=True,
-    )
-    llm_model = LlamaForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=quantization_config,
-        device_map="auto",
-        low_cpu_mem_usage=True,
-        max_memory={0: "4GB", "cpu": "16GB"}
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    logging.info("LLM model loaded successfully")
-except Exception as e:
-    logging.error(f"Failed to load LLM model: {str(e)}")
-    llm_model = None
-
 # Load Coqui TTS model
 coqui_tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=False).to(device)
 
 MODEL_MAPPING = {
-    'gpt4o': 'gpt-4o',
     'gpt4o-mini': 'gpt-4o-mini',
-    'gpt4-turbo': 'gpt-4-turbo',
-    'gpt4': 'gpt-4',
-    'gpt35-turbo': 'gpt-3.5-turbo',
-    'gemini-pro': 'gemini-pro',
-    'llama': 'llama'
+    'gemini-pro': 'gemini-pro'
 }
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer"]
 if USE_LOCAL_MODELS:
     AVAILABLE_VOICES.append("isabela")
-
-@app.route('/llm-chat', methods=['POST'])
-def llm_chat():
-    data = request.json
-    prompt = data.get('prompt')
-
-    full_prompt = f"User: {prompt}\nAssistant:"
-    inputs = tokenizer(full_prompt, return_tensors="pt", padding=True, truncation=True).to("cuda")
-    with torch.no_grad():
-        outputs = llm_model.generate(
-            inputs.input_ids,
-            attention_mask=inputs.attention_mask,
-            max_length=500,
-            num_beams=5,
-            no_repeat_ngram_size=2,
-            early_stopping=True
-        )
-    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    generated_text = generated_text.split("Assistant:")[-1].strip()
-    return generated_text
 
 @app.route('/generate-local-image', methods=['POST'])
 def generate_local_image():
@@ -364,22 +313,6 @@ def generate_response(prompt, model, is_kids_mode=False, language='', ai_role='D
             
             response = gemini_model.generate_content([system_message, prompt])
             generated_text = response.text
-        elif model == 'llama':
-            if language:
-                prompt += f"\nRespond in language ({language})."
-            full_prompt = f"{system_message}\nUser: {prompt}\nAssistant:"
-            inputs = tokenizer(full_prompt, return_tensors="pt", padding=True, truncation=True).to("cuda")
-            with torch.no_grad():
-                outputs = llm_model.generate(
-                    inputs.input_ids,
-                    attention_mask=inputs.attention_mask,
-                    max_length=1500,
-                    num_beams=5,
-                    no_repeat_ngram_size=2,
-                    early_stopping=True
-                )
-            generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            generated_text = generated_text.split("Assistant:")[-1].strip()
         else:
             # Existing OpenAI processing
             openai_model = MODEL_MAPPING.get(model, 'gpt-4o-mini')

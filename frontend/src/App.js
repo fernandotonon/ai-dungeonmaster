@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
-import { Container, Typography } from '@mui/material';
+import { Container } from '@mui/material';
 import AuthInterface from './components/AuthInterface';
 import UserInterface from './components/UserInterface';
 import GameInterface from './components/GameInterface';
+import JoinGame from './components/JoinGame';
 import ErrorAlert from './components/ErrorAlert';
 import api from './services/api';
 import { useTranslation } from 'react-i18next'; 
 import { useKidsMode } from './contexts/KidsModeContext';
 import CookieConsent from './components/CookieConsent';
 import ServerStatus from './components/ServerStatus';
+import { useSocket } from './contexts/SocketContext';
 
 const AppContainer = styled(Container)(({ theme }) => ({
   height: '100%',
@@ -17,7 +20,7 @@ const AppContainer = styled(Container)(({ theme }) => ({
   padding: theme.spacing(2),
 }));
 
-function App() {
+function MainApp() {
   const [user, setUser] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [error, setError] = useState(null);
@@ -26,7 +29,7 @@ function App() {
   const { t, i18n } = useTranslation();
   const { isKidsMode } = useKidsMode();
   const [availableVoices, setAvailableVoices] = useState([]);
-  const [isServerDown, setIsServerDown] = useState(false);
+  const { isServerDown } = useSocket();
 
   const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
@@ -36,9 +39,6 @@ function App() {
   useEffect(() => {
     checkLoginStatus();
     i18n.changeLanguage(systemLanguage.replace('-','')); 
-    checkServerStatus();
-    const interval = setInterval(checkServerStatus, 30000); 
-    return () => clearInterval(interval);
   }, []);
 
   const checkLoginStatus = async () => {
@@ -113,15 +113,6 @@ function App() {
     }
   };
 
-  const checkServerStatus = async () => {
-    try {
-      await api.health();
-      setIsServerDown(false);
-    } catch (error) {
-      setIsServerDown(true);
-    }
-  };
-
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -130,7 +121,6 @@ function App() {
     <AppContainer maxWidth="xl">
       <ServerStatus isServerDown={isServerDown} />
       <ErrorAlert error={error} clearError={clearError} />
-
       {!user && <AuthInterface onLogin={handleLogin} setError={setError} />}
       {user && !gameState && (
         <UserInterface
@@ -160,6 +150,18 @@ function App() {
       )}
       <CookieConsent />
     </AppContainer>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/join/:gameId" element={<JoinGame />} />
+        <Route path="/" element={<MainApp />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

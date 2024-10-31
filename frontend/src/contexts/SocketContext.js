@@ -5,10 +5,27 @@ const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
+  const [isServerDown, setIsServerDown] = useState(false);
 
   useEffect(() => {
     const newSocket = io('https://api-rpg.ftonon.uk', {
-      withCredentials: true
+      withCredentials: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5
+    });
+
+    newSocket.on('connect', () => {
+      setIsServerDown(false);
+    });
+
+    newSocket.on('disconnect', () => {
+      setIsServerDown(true);
+    });
+
+    newSocket.on('connect_error', () => {
+      setIsServerDown(true);
     });
 
     setSocket(newSocket);
@@ -17,7 +34,7 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   return (
-    <SocketContext.Provider value={{ socket }}>
+    <SocketContext.Provider value={{ socket, isServerDown }}>
       {children}
     </SocketContext.Provider>
   );

@@ -8,7 +8,12 @@ const { emitGameUpdate } = require('../services/socketService');
 
 router.get('/user-games', verifyToken, async (req, res) => {
   try {
-    const games = await Game.find({ user: req.user._id }).sort('-updatedAt');
+    const games = await Game.find({
+      $or: [
+        { user: req.user._id },
+        { 'players.userId': req.user._id }
+      ]
+    }).sort('-updatedAt');
     res.json(games);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching games' });
@@ -64,7 +69,13 @@ router.post('/init-game', verifyToken, async (req, res) => {
 
 router.get('/load-game/:id', verifyToken, async (req, res) => {
   try {
-    const game = await Game.findOne({ _id: req.params.id, user: req.user._id });
+    const game = await Game.findOne({
+      _id: req.params.id,
+      $or: [
+        { user: req.user._id },
+        { 'players.userId': req.user._id }
+      ]
+    });
     if (!game) return res.status(404).json({ error: 'Game not found' });
     res.json({ gameState: game });
   } catch (error) {

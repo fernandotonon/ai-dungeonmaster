@@ -15,7 +15,7 @@ const JoinGame = () => {
     const joinGame = async () => {
       try {
         const response = await game.joinGame(gameId, 'Player');
-        navigate('/', { state: { gameState: response.data.gameState } });
+        navigate(`/game/${gameId}`, { state: { gameState: response.data.gameState } });
       } catch (error) {
         setError(error.response?.data?.error || 'Failed to join game');
       } finally {

@@ -219,6 +219,7 @@ const UserInterface = ({
             {userGames.map((game, index) => (
               <AlternatingListItem key={game._id} index={index}>
                 <EditableGameTitle
+                  user={user}
                   game={game}
                   onSave={handleSaveGameTitle}
                   onLoadGame={onLoadGame}

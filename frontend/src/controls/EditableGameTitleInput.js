@@ -1,12 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ListItemText, TextField, IconButton, Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button } from '@mui/material';
+import { ListItemText, TextField, IconButton, Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, Chip } from '@mui/material';
 import { Edit, Save, Cancel, Delete } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 
-const EditableGameTitle = ({ game, onSave, onLoadGame, onDelete }) => {
+const EditableGameTitle = ({ user, game, onSave, onLoadGame, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(game.title);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const inputRef = useRef(null);
+  const { t } = useTranslation();
+
+  const playerStatus = game.players.find(p => p.userId === user.userId)
+    ? game.user === user.userId 
+      ? t('host')
+      : t('player')
+    : '';
 
   useEffect(() => {
     if (isEditing) {
@@ -79,6 +87,13 @@ const EditableGameTitle = ({ game, onSave, onLoadGame, onDelete }) => {
         onClick={() => onLoadGame(game._id)}
         sx={{ cursor: 'pointer' }}
       />
+      {playerStatus && 
+        <Chip 
+          size="small" 
+          label={playerStatus} 
+          sx={{ ml: 1 }}
+        />
+      }
       <IconButton onClick={handleEditClick}>
         <Edit />
       </IconButton>

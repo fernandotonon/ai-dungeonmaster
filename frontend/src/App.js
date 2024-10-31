@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import { Container } from '@mui/material';
 import AuthInterface from './components/AuthInterface';
@@ -30,6 +30,7 @@ function MainApp() {
   const { isKidsMode } = useKidsMode();
   const [availableVoices, setAvailableVoices] = useState([]);
   const { isServerDown } = useSocket();
+  const { gameId } = useParams();
 
   const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];
   const systemLanguage = supportedLanguages.includes(navigator.language.toLowerCase()) 
@@ -40,6 +41,12 @@ function MainApp() {
     checkLoginStatus();
     i18n.changeLanguage(systemLanguage.replace('-','')); 
   }, []);
+
+  useEffect(() => {
+    if (gameId && user) {
+      handleLoadGame(gameId);
+    }
+  }, [gameId, user]);
 
   const checkLoginStatus = async () => {
     try {
@@ -158,6 +165,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/join/:gameId" element={<JoinGame />} />
+        <Route path="/game/:gameId" element={<MainApp />} />
         <Route path="/" element={<MainApp />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

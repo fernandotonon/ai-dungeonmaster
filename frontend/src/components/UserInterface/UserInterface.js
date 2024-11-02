@@ -18,17 +18,17 @@ import {
 } from '@mui/material';
 import { Brightness4, Brightness7, Settings } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next'; 
-import api from '../services/api';
-import { getRandomBackground } from '../utils/backgroundUtils';
-import KidsModeToggle from '../controls/KidsModeToggle'; 
-import { useKidsMode } from '../contexts/KidsModeContext';
-import EditableGameTitle from '../controls/EditableGameTitleInput';
-import TextInput from '../controls/TextInput';
+import api from '../../services/api';
+import { getRandomBackground } from '../../utils/backgroundUtils';
+import KidsModeToggle from '../../controls/KidsModeToggle'; 
+import { useKidsMode } from '../../contexts/KidsModeContext';
+import EditableGameTitle from '../../controls/EditableGameTitleInput';
+import TextInput from '../../controls/TextInput';
 import UserSettings from './UserSettings';
 import OnlinePlayersList from './OnlinePlayersList';
-import { useSocket } from '../contexts/SocketContext';
+import { useSocket } from '../../contexts/SocketContext';
 
 // Supported languages
 const supportedLanguages = ['pt-br', 'en', 'es', 'de', 'it', 'fr'];

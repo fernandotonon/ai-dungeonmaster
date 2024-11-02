@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { Typography, Box, IconButton, CircularProgress, Button } from '@mui/material';
 import { VolumeUp, Image } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { getMessageContent, getMessageOptions } from '../utils/messageUtils';
+import { getMessageContent, getMessageOptions } from '../../utils/messageUtils';
 
 const MessageItem = ({ 
   message, 

@@ -13,15 +13,15 @@ import {
 } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { useTheme } from '../contexts/ThemeContext';
-import { useKidsMode } from '../contexts/KidsModeContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useKidsMode } from '../../contexts/KidsModeContext';
 import { useTranslation } from 'react-i18next'; 
-import api from '../services/api';
-import ActionInput from '../controls/ActionInput';
-import { getRandomBackground } from '../utils/backgroundUtils';
+import api from '../../services/api';
+import ActionInput from '../../controls/ActionInput';
+import { getRandomBackground } from '../../utils/backgroundUtils';
 import FullscreenImageViewer from './FullscreenImageViewer';
 import MessageList from './MessageList';
-import { useSocket } from '../contexts/SocketContext';
+import { useSocket } from '../../contexts/SocketContext';
 import PlayersList from './PlayerList';
 import InviteDialog from './InviteDialog';
 

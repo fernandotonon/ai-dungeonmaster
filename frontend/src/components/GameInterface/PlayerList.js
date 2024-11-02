@@ -34,7 +34,7 @@ const PlayersList = ({ players, currentUser, onLeaveGame, onRemovePlayer }) => {
                 )}
               </Typography>
             }
-            secondary={t(`role.${player.role}`)}
+            secondary={t(`${player.role.toLowerCase()}`)}
           />
         </ListItem>
       ))}

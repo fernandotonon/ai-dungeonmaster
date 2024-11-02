@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'rea
 import { styled } from '@mui/material/styles';
 import { Container } from '@mui/material';
 import AuthInterface from './components/AuthInterface';
-import UserInterface from './components/UserInterface';
-import GameInterface from './components/GameInterface';
+import UserInterface from './components/UserInterface/UserInterface';
+import GameInterface from './components/GameInterface/GameInterface';
 import JoinGame from './components/JoinGame';
 import ErrorAlert from './components/ErrorAlert';
 import api from './services/api';

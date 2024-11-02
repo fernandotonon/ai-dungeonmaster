@@ -321,6 +321,16 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
     }
   };
 
+  const handleRemovePlayer = async (userId) => {
+    try {
+      const response = await api.game.removePlayer(gameState._id, userId);
+      setGameState(response.data.gameState);
+    } catch (error) {
+      console.error('Error removing player:', error);
+      setError('Failed to remove player');
+    }
+  };
+
   useEffect(() => {
     if (socket && gameState._id) {
       socket.emit('joinGame', gameState._id);
@@ -338,7 +348,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
 
   const handleInvitePlayer = async (inviteData) => {
     try {
-      const response = await api.game.addPlayer(gameState._id, inviteData.username, inviteData.role);
+      const response = await api.game.addPlayer(gameState._id, inviteData.username, inviteData.role, inviteData.email);
       setGameState(response.data.gameState);
       setShowInviteDialog(false);
     } catch (error) {
@@ -421,6 +431,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 players={gameState.players}
                 currentUser={user}
                 onLeaveGame={() => handleLeaveGame(gameState._id)}
+                onRemovePlayer={handleRemovePlayer}
               />
               {gameState.players.find(p => p.userId === user.userId)?.isHost && (
                 <Button

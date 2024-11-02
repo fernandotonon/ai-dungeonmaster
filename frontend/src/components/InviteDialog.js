@@ -18,13 +18,13 @@ import { useTranslation } from 'react-i18next';
 const InviteDialog = ({ open, onClose, onInvite, gameId }) => {
   const { t } = useTranslation();
   const [inviteData, setInviteData] = useState({
-    username: '',
-    role: 'Player'
+    role: 'Player',
+    email: ''
   });
 
   const handleInvite = () => {
     onInvite(inviteData);
-    setInviteData({ username: '', role: 'Player' });
+    setInviteData({ username: '', role: 'Player', email: '' });
   };
 
   const inviteLink = `${window.location.origin}/join/${gameId}`;
@@ -53,9 +53,10 @@ const InviteDialog = ({ open, onClose, onInvite, gameId }) => {
           </Typography>
           <TextField
             fullWidth
-            label={t('username')}
-            value={inviteData.username}
-            onChange={(e) => setInviteData({ ...inviteData, username: e.target.value })}
+            label={t('email')}
+            type="email"
+            value={inviteData.email}
+            onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
             margin="normal"
           />
           <FormControl fullWidth margin="normal">
@@ -65,7 +66,7 @@ const InviteDialog = ({ open, onClose, onInvite, gameId }) => {
               onChange={(e) => setInviteData({ ...inviteData, role: e.target.value })}
             >
               <MenuItem value="Player">{t('player')}</MenuItem>
-              <MenuItem value="Observer">{t('observer')}</MenuItem>
+              <MenuItem value="Dungeon Master">{t('dungeon_master')}</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -78,7 +79,7 @@ const InviteDialog = ({ open, onClose, onInvite, gameId }) => {
           onClick={handleInvite} 
           color="primary" 
           variant="contained"
-          disabled={!inviteData.username}
+          disabled={!inviteData.email}
         >
           {t('invite')}
         </Button>

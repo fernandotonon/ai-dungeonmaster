@@ -19,6 +19,7 @@ services:
     volumes:
       - ./game-server:/app
       - /app/node_modules
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
     ports:
       - "3000:3000"
     environment:
@@ -31,6 +32,8 @@ services:
       - MINIO_AUDIO_BUCKET_NAME=audio-files
       - MINIO_IMAGE_BUCKET_NAME=image-files
       - JWT_SECRET=ai-dungeonmaster-secret
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
     depends_on:
       # - ai-engine
       - mongodb      

@@ -46,13 +46,14 @@ export const game = {
   loadGame: (gameId) => api.get(`/game/load-game/${gameId}`),
   updatePreferences: (gameId, imageStyle, voice) => 
     api.post('/game/update-preferences', { gameId, imageStyle, voice }),
-  addPlayer: (gameId, username, role) => 
-    api.post('/game/add-player', { gameId, username, role }),
+  addPlayer: (gameId, username, role, email) => 
+    api.post('/game/add-player', { gameId, username, role, email }),
   updateGame: ({gameId, title, storyTheme}) => 
     api.put('/game/update-game', { gameId, title, storyTheme }),
   deleteGame: (gameId) => api.delete(`/game/${gameId}`),
   joinGame: (gameId, role) => api.post('/game/join-game', { gameId, role }),
   leaveGame: (gameId) => api.post('/game/leave-game', { gameId }),
+  removePlayer: (gameId, userId) => api.post('/game/remove-player', { gameId, userId }),
   getPublicGames: () => api.get('/game/public-games'),
 };
 

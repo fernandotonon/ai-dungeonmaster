@@ -3,17 +3,18 @@ import { List, ListItem, ListItemText, ListItemAvatar, Avatar, IconButton, Typog
 import { Person, Star, ExitToApp } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
-const PlayersList = ({ players, currentUser, onLeaveGame }) => {
+const PlayersList = ({ players, currentUser, onLeaveGame, onRemovePlayer }) => {
   const { t } = useTranslation();
 
+  const isHost = players.find(p => p.userId === currentUser.userId)?.isHost;
   return (
     <List>
       {players.map((player) => (
         <ListItem
           key={player.userId}
           secondaryAction={
-            currentUser._id === player.userId && (
-              <IconButton edge="end" onClick={onLeaveGame}>
+            (currentUser.userId === player.userId || isHost) && (
+              <IconButton edge="end" onClick={currentUser.userId === player.userId ? onLeaveGame : () => onRemovePlayer(player.userId)}>
                 <ExitToApp />
               </IconButton>
             )
@@ -33,7 +34,7 @@ const PlayersList = ({ players, currentUser, onLeaveGame }) => {
                 )}
               </Typography>
             }
-            secondary={player.role}
+            secondary={t(`role.${player.role}`)}
           />
         </ListItem>
       ))}

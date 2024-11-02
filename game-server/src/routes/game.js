@@ -1,10 +1,12 @@
 const express = require('express');
 const verifyToken = require('../middleware/auth');
 const Game = require('../models/Game');
+const User = require('../models/User');
 const router = express.Router();
 const axios = require('axios');
 const { audioBucketName, imageBucketName, deleteFile } = require('../services/minioService');
 const { emitGameUpdate } = require('../services/socketService');
+const { sendInviteEmail } = require('../services/emailService');
 
 router.get('/user-games', verifyToken, async (req, res) => {
   try {
@@ -120,29 +122,36 @@ router.put('/update-game', verifyToken, async (req, res) => {
 
 router.post('/add-player', verifyToken, async (req, res) => {
   try {
-    const { username, gameId, role } = req.body;
-    const game = await Game.findOneAndUpdate(
-      { _id: gameId },
-      { 
-        $addToSet: { 
-          players: {
-            userId: req.user._id,
-            username,
-            role,
-            isHost: game.players.length === 0, // First player is host
-            online: true
-          }
-        },
-        $set: { isMultiplayer: true, updatedAt: new Date() }
-      },
-      { new: true }
-    );
+    const { gameId, role, email } = req.body;
+    const game = await Game.findOne({ _id: gameId, user: req.user._id });
+    
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    if(!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
 
+    // find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      const inviteLink = `${process.env.FRONTEND_URL}/join/${gameId}`;
+      await sendInviteEmail(email, inviteLink, game.title, req.user.username);
+      return res.json({ message: 'User invited', gameState: game });
+    }
+    
+    game.players.push({
+      userId: user._id,
+      username: user.username,
+      role,
+      isHost: false
+    });
+
+    await game.save();
     emitGameUpdate(gameId, game);
     res.json({ gameState: game });
   } catch (error) {
-    console.error('Error adding player:', error);
-    res.status(500).json({ error: 'Error adding player' });
+    res.status(500).json({ error: 'Error adding player: ' + error });
   }
 });
 
@@ -228,6 +237,7 @@ router.post('/leave-game', verifyToken, async (req, res) => {
     // assign a new host
     if (game.players.length > 0 && !game.players.some(p => p.isHost)) {
       game.players[0].isHost = true;
+      game.user = game.players[0].userId;
       await game.save();
     }
 
@@ -236,6 +246,32 @@ router.post('/leave-game', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error leaving game:', error);
     res.status(500).json({ error: 'Error leaving game' });
+  }
+});
+
+// Remove player
+router.post('/remove-player', verifyToken, async (req, res) => {
+  try {
+    const { gameId, userId } = req.body;
+    const game = await Game.findOneAndUpdate(
+      { _id: gameId },
+      { new: true }
+    );
+
+    if (!game || game.players.filter(p => p.userId.toString() === req.user._id.toString() && p.isHost).length === 0) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    if(game.players.filter(p => p.userId.toString() === userId).length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    game.players = game.players.filter(p => p.userId.toString() !== userId);
+    await game.save();
+
+    emitGameUpdate(gameId, game);
+    res.json({ gameState: game });
+  } catch (error) {
+    res.status(500).json({ error: 'Error removing player' });
   }
 });
 

@@ -423,7 +423,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
               </Box>}
             </Box>
 
-
+            {!isKidsMode && 
             <Box sx={{ marginBottom: 2, marginTop: 2, width: '100%' }}>
               <Typography variant="h6">{t('players')}</Typography>
               <Divider sx={{ my: 1, width: '100%' }} />
@@ -443,7 +443,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                   {t('invite_players')}
                 </Button>
               )}
-            </Box>
+            </Box>}
           </Box>
           <Box display="flex" flexDirection="column" sx={{ width: '100%' }}>
             <StoryContainer elevation={2} ref={storyContainerRef}>

@@ -325,7 +325,7 @@ const UserInterface = ({
         >
           {`${t('newGame')} ${!isKidsMode ? t('asPlayer') : ""}`}
         </Button>
-        <OnlinePlayersList onlineUsers={onlineUsers} />
+        {!isKidsMode && <OnlinePlayersList onlineUsers={onlineUsers} />}
         </Box>
         </Box>
         {showUserSettings && (

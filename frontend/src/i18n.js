@@ -76,7 +76,8 @@ const resources = {
       cancel: "Cancel",
       invite: "Invite",
       online_players: "Online Players",
-      server_down_message: "Server is currently unavailable. We're working on it!"
+      server_down_message: "Server is currently unavailable. We're working on it!",
+      login_with_fingerprint: "Login with Fingerprint"
     }
   },
   ptbr: {
@@ -152,7 +153,8 @@ const resources = {
       cancel: "Cancelar",
       invite: "Convidar",
       online_players: "Jogadores Online",
-      server_down_message: "O servidor está indisponível no momento. Estamos trabalhando nisso!"
+      server_down_message: "O servidor está indisponível no momento. Estamos trabalhando nisso!",
+      login_with_fingerprint: "Login com Impressão Digital"
     }
   },
   es: {
@@ -228,7 +230,8 @@ const resources = {
       cancel: "Cancelar",
       invite: "Invitar",
       online_players: "Jugadores en Línea",
-      server_down_message: "El servidor está actualmente indisponible. Estamos trabajando en ello!"
+      server_down_message: "El servidor está actualmente indisponible. Estamos trabajando en ello!",
+      login_with_fingerprint: "Iniciar sesión con huella digital"
     }
   },
   de: {
@@ -304,7 +307,8 @@ const resources = {
       cancel: "Abbrechen",
       invite: "Einladen",
       online_players: "Spieler Online",
-      server_down_message: "Der Server ist derzeit nicht verfügbar. Wir arbeiten daran!"
+      server_down_message: "Der Server ist derzeit nicht verfügbar. Wir arbeiten daran!",
+      login_with_fingerprint: "Anmelden mit Fingerabdruck"
     }
   },
   it: {
@@ -380,7 +384,8 @@ const resources = {
       cancel: "Annulla",
       invite: "Invita",
       online_players: "Giocatori Online",
-      server_down_message: "Il server è attualmente indisponibile. Stiamo lavorando su questo!"
+      server_down_message: "Il server è attualmente indisponibile. Stiamo lavorando su questo!",
+      login_with_fingerprint: "Accedi con la tua impronta digitale"
     }
   },
   fr: {
@@ -456,7 +461,8 @@ const resources = {
       cancel: "Annuler",
       invite: "Inviter",
       online_players: "Joueurs en Ligne",
-      server_down_message: "Le serveur est actuellement indisponible. Nous y travaillons!"
+      server_down_message: "Le serveur est actuellement indisponible. Nous y travaillons!",
+      login_with_fingerprint: "Se connecter avec votre empreinte digitale"
     }
   }
   // Add translations for other languages here

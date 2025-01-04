@@ -9,7 +9,7 @@ import {
   Paper,
   IconButton
 } from '@mui/material';
-import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { Brightness4, Brightness7, Fingerprint } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
@@ -49,10 +49,28 @@ const AuthInterface = ({ onLogin }) => {
   const [backgroundImage, setBackgroundImage] = useState('');
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
+  const [showBiometric, setShowBiometric] = useState(false);
 
   useEffect(() => {
     setBackgroundImage(getRandomBackground(isKidsMode));
   }, []);
+
+  useEffect(() => {
+    // Check if running in Android WebView
+    const isAndroidWebView = window.Android !== undefined;
+    if (isAndroidWebView) {
+      // Store this information in localStorage
+      localStorage.setItem('isAndroidWebView', 'true');
+      // Check if biometric is available
+      setShowBiometric(window.Android.isBiometricAvailable());
+    }
+  }, []);
+
+  const handleBiometricLogin = () => {
+    if (window.Android) {
+      window.Android.requestBiometricLogin();
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,6 +108,18 @@ const AuthInterface = ({ onLogin }) => {
             {darkMode ? <Brightness7 /> : <Brightness4 />}
           </IconButton>}
         </div>
+        {showBiometric && !isRegistering && (
+          <Button
+            startIcon={<Fingerprint />}
+            onClick={handleBiometricLogin}
+            fullWidth
+            variant="outlined"
+            color="primary"
+            style={{ marginBottom: '1rem' }}
+          >
+            {t('login_with_fingerprint')}
+          </Button>
+        )}
         <Form onSubmit={handleSubmit}>
           <TextField
             label={t('username')}

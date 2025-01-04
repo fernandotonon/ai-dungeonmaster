@@ -11,7 +11,7 @@ from gtts import gTTS
 from TTS.api import TTS 
 from google.generativeai import GenerativeModel, configure
 import google.generativeai as genai
-from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler, AutoPipelineForText2Image, StableDiffusion3Pipeline
+from diffusers import DPMSolverMultistepScheduler, AutoPipelineForText2Image
 from io import BytesIO
 import base64
 from huggingface_hub import login
@@ -55,13 +55,10 @@ configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Load image generation models
 torch.cuda.empty_cache()
-#pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3-medium-diffusers", torch_dtype=torch.float16, variant="fp16").to(device)
-pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float16, variant="fp16").to(device)
+pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float16, variant="fp16", max_memory={0: "8GB", "cpu": "8GB"}).to(device)
 pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 pipe.enable_model_cpu_offload()
 pipe.to("cpu")
-# torch.cuda.empty_cache()
-# pipe_vid = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid", torch_dtype=torch.float16).to(device)
 
 # Load Coqui TTS model
 coqui_tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=False).to(device)

@@ -16,6 +16,8 @@ import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import android.util.Log
+import android.os.Build
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -25,22 +27,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()
         setContentView(R.layout.activity_main)
 
+        // Enable WebView debugging
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
+        
         webView = findViewById(R.id.webView)
         progressBar = findViewById(R.id.progressBar)
 
         webView.addJavascriptInterface(WebAppInterface(), "Android")
-
-        val isBiometricEnabled = PreferenceManager.getDefaultSharedPreferences(this)
-            .getBoolean("use_biometric", false)
         
-        if (isBiometricEnabled && hasStoredCredentials()) {
-            webView.visibility = View.GONE
-            setupBiometricAuth()
-        } else {
-            setupWebView()
-        }
+        // Always set up normal webview - biometric auth will be handled by the web interface
+        setupWebView()
     }
 
     inner class WebAppInterface {
@@ -48,6 +49,19 @@ class MainActivity : AppCompatActivity() {
         fun saveCredentials(username: String, password: String) {
             runOnUiThread {
                 saveCredentialsToStorage(username, password)
+            }
+        }
+
+        @JavascriptInterface
+        fun isBiometricAvailable(): Boolean {
+            return PreferenceManager.getDefaultSharedPreferences(this@MainActivity)
+                .getBoolean("use_biometric", false) && hasStoredCredentials()
+        }
+
+        @JavascriptInterface
+        fun requestBiometricLogin() {
+            runOnUiThread {
+                setupBiometricAuth()
             }
         }
     }
@@ -70,7 +84,7 @@ class MainActivity : AppCompatActivity() {
                     // Small delay to ensure page is fully loaded
                     webView.postDelayed({
                         autoLogin(credentials!!.first, credentials!!.second)
-                    }, 1000)
+                    }, 500)
                     shouldAutoLogin = false
                 } else if (url?.contains("rpg.ftonon.uk") == true) {
                     injectCredentialSaver()
@@ -84,37 +98,61 @@ class MainActivity : AppCompatActivity() {
     private fun injectCredentialSaver() {
         val javascript = """
             javascript:(function() {
-                console.log('Setting up form listener');
-                
                 // Function to save credentials
                 function saveLoginInfo() {
-                    var usernameInput = document.querySelector('input[name="username"]');
-                    var passwordInput = document.querySelector('input[name="password"]');
+                    var usernameInput = document.querySelector('input[type="text"], input[type="email"]');
+                    var passwordInput = document.querySelector('input[type="password"]');
                     
                     if (usernameInput && passwordInput) {
-                        var username = usernameInput.value.trim(); // Trim whitespace
+                        var username = usernameInput.value.trim();
                         var password = passwordInput.value;
+                        
                         if (username && password) {
-                            console.log('Saving credentials');
                             window.Android.saveCredentials(username, password);
                         }
                     }
                 }
                 
                 // Listen for form submission
-                document.querySelector('form').addEventListener('submit', function(e) {
-                    console.log('Form submitted');
-                    saveLoginInfo();
+                function setupFormListener() {
+                    var forms = document.querySelectorAll('form');
+                    
+                    forms.forEach(function(form) {
+                        form.addEventListener('submit', saveLoginInfo);
+                    });
+                    
+                    // Also try to find the submit button
+                    var submitButton = document.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.addEventListener('click', saveLoginInfo);
+                    }
+                }
+                
+                // Try immediately and after a delay
+                setupFormListener();
+                setTimeout(setupFormListener, 1000);
+                
+                // Observe DOM changes
+                var observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length) {
+                            setupFormListener();
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
                 });
             })()
         """.trimIndent()
         
-        webView.evaluateJavascript(javascript) {  }
+        webView.evaluateJavascript(javascript, null)
     }
 
     private fun saveCredentialsToStorage(username: String, password: String) {
         try {
-            // Trim username before saving
             val trimmedUsername = username.trim()
             
             val masterKey = MasterKey.Builder(applicationContext)
@@ -134,7 +172,9 @@ class MainActivity : AppCompatActivity() {
                 putString("password", password)
                 apply()
             }
+            
         } catch (e: Exception) {
+            Log.e("MainActivity", "Error saving credentials: ${e.message}", e)
             Toast.makeText(this, "Error saving credentials: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
@@ -142,30 +182,34 @@ class MainActivity : AppCompatActivity() {
     private fun hasStoredCredentials(): Boolean {
         return try {
             val (username, password) = getStoredCredentials()
-            val hasCredentials = username.isNotEmpty() && password.isNotEmpty()
-            hasCredentials
+            username.isNotEmpty() && password.isNotEmpty()
         } catch (e: Exception) {
-            Toast.makeText(this, "Error checking credentials: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("MainActivity", "Error checking credentials: ${e.message}", e)
             false
         }
     }
 
     private fun getStoredCredentials(): Pair<String, String> {
-        val masterKey = MasterKey.Builder(applicationContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
+        try {
+            val masterKey = MasterKey.Builder(applicationContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
 
-        val sharedPreferences = EncryptedSharedPreferences.create(
-            applicationContext,
-            "secret_shared_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+            val sharedPreferences = EncryptedSharedPreferences.create(
+                applicationContext,
+                "secret_shared_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
 
-        val username = sharedPreferences.getString("username", "") ?: ""
-        val password = sharedPreferences.getString("password", "") ?: ""
-        return Pair(username, password)
+            val username = sharedPreferences.getString("username", "") ?: ""
+            val password = sharedPreferences.getString("password", "") ?: ""
+            return Pair(username, password)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error getting stored credentials: ${e.message}", e)
+            throw e
+        }
     }
 
     private fun setupBiometricAuth() {
@@ -187,8 +231,23 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         Toast.makeText(applicationContext, 
                             "Authentication error: $errString", Toast.LENGTH_SHORT).show()
-                        webView.visibility = View.VISIBLE
-                        setupWebView()
+                        // Don't automatically show webView on error
+                        if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON || 
+                            errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                            webView.visibility = View.VISIBLE
+                            setupWebView()
+                        } else {
+                            // For other errors, retry biometric auth
+                            setupBiometricAuth()
+                        }
+                    }
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, 
+                            "Authentication failed", Toast.LENGTH_SHORT).show()
                     }
                 }
             })
@@ -279,8 +338,8 @@ class MainActivity : AppCompatActivity() {
                                         submitButton.click();
                                     }
                                 }
-                            }, 500);
-                        }, 500);
+                            }, 100);
+                        }, 100);
                         
                         return true;
                     }
@@ -296,20 +355,5 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
         
         webView.evaluateJavascript(javascript, null)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> {
-                startActivity(Intent(this, SettingsActivity::class.java))
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
     }
 }

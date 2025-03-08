@@ -9,3 +9,4 @@ venv
 # Cloudflare
 cloudflare-tunnel-credentials.json
 cloudflare-config.yml
+google-services.json

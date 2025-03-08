@@ -63,6 +63,14 @@ const AuthInterface = ({ onLogin }) => {
       localStorage.setItem('isAndroidWebView', 'true');
       // Check if biometric is available
       setShowBiometric(window.Android.isBiometricAvailable());
+
+      const fcmToken = window.Android.getFcmToken();
+      console.log("FCM Token:", fcmToken);
+
+      window.fcmTokenReceived = function(token) {
+        // Test callback function to retrieve FCM token
+        console.log("FCM Token received:", token);
+      };
     }
   }, []);
 

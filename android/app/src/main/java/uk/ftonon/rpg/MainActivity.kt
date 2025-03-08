@@ -18,6 +18,11 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import android.util.Log
 import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.annotation.RequiresApi
+import com.google.firebase.messaging.FirebaseMessaging
+import android.annotation.SuppressLint
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -25,6 +30,24 @@ class MainActivity : AppCompatActivity() {
     private var shouldAutoLogin = false
     private var credentials: Pair<String, String>? = null
 
+    companion object {
+        // Store the FCM token
+        var fcmToken: String? = null
+        
+        // Function to update any active WebViews with the token
+        fun updateWebViewWithToken() {
+            // This will be called by active MainActivity instances
+            activeInstances.forEach { it.injectFcmToken() }
+        }
+        
+        // Keep track of active MainActivity instances
+        private val activeInstances = mutableListOf<MainActivity>()
+        
+        // Notification permission request code
+        private const val NOTIFICATION_PERMISSION_CODE = 123
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
@@ -42,6 +65,22 @@ class MainActivity : AppCompatActivity() {
         
         // Always set up normal webview - biometric auth will be handled by the web interface
         setupWebView()
+
+        // Request notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestNotificationPermission()
+        }
+        
+        // Get FCM token
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                fcmToken = task.result
+                Log.d("MainActivity", "FCM Token: $fcmToken")
+                injectFcmToken()
+            } else {
+                Log.e("MainActivity", "Failed to get FCM token", task.exception)
+            }
+        }
     }
 
     inner class WebAppInterface {
@@ -64,6 +103,12 @@ class MainActivity : AppCompatActivity() {
                 setupBiometricAuth()
             }
         }
+
+        @JavascriptInterface
+        fun getFcmToken(): String {
+            // Return a dummy token or implement actual FCM token retrieval
+            return "dummy-fcm-token"
+        }
     }
 
     private fun setupWebView() {
@@ -73,6 +118,8 @@ class MainActivity : AppCompatActivity() {
             databaseEnabled = true
             loadWithOverviewMode = true
             useWideViewPort = true
+            allowFileAccess = true
+            allowContentAccess = true
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -88,6 +135,7 @@ class MainActivity : AppCompatActivity() {
                     shouldAutoLogin = false
                 } else if (url?.contains("rpg.ftonon.uk") == true) {
                     injectCredentialSaver()
+                    injectFcmToken() // Inject token when page loads
                 }
             }
         }
@@ -355,5 +403,63 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
         
         webView.evaluateJavascript(javascript, null)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun requestNotificationPermission() {
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != 
+            PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_CODE
+            )
+        }
+    }
+
+    fun injectFcmToken() {
+        fcmToken?.let { token ->
+            // Inject the token into the WebView
+            val javascript = """
+                javascript:(function() {
+                    // Store token in localStorage
+                    localStorage.setItem('fcmToken', '$token');
+                    
+                    // Call function if it exists
+                    if (typeof window.fcmTokenReceived === 'function') {
+                        window.fcmTokenReceived('$token');
+                    } else {
+                        // Create a global function for later use
+                        window.fcmTokenReceived = function(token) {
+                            console.log('FCM Token received:', token);
+                            // Your web app can use this token
+                        };
+                        // Call it immediately with current token
+                        window.fcmTokenReceived('$token');
+                    }
+                })()
+            """.trimIndent()
+            
+            webView.evaluateJavascript(javascript) { result ->
+                Log.d("MainActivity", "FCM token injected")
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        activeInstances.add(this)
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        activeInstances.remove(this)
+    }
+
+    override fun onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
     }
 }

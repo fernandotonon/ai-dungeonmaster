@@ -10,4 +10,3 @@ diffusers
 accelerate
 moviepy
 TTS
-bitsandbytes

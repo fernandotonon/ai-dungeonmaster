@@ -17,10 +17,24 @@ import base64
 from huggingface_hub import login
 import json
 
+# Set environment variable to accept TTS license agreement
+os.environ["COQUI_TOS_AGREED"] = "1"
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-login(token=os.getenv("HUGGING_FACE_TOKEN"))
+# Only login to Hugging Face if token is provided
+hf_token = os.getenv("HUGGING_FACE_TOKEN")
+if hf_token:
+    logger.info("Logging in to Hugging Face with provided token")
+    try:
+        login(token=hf_token)
+        logger.info("Successfully logged in to Hugging Face")
+    except Exception as e:
+        logger.warning(f"Failed to log in to Hugging Face: {str(e)}")
+        logger.warning("Some features may not work without Hugging Face authentication")
+else:
+    logger.warning("No Hugging Face token provided. Some features may not work.")
 
 app = Flask(__name__)
 CORS(app)
@@ -41,6 +55,8 @@ else:
 
 torch.set_num_threads(4)  # Adjust this based on your CPU cores
 
+logger.info("Starting Whisper model")
+
 # Load Whisper model for local processing
 stt_device = torch.device("cuda")
 whisper_processor = WhisperProcessor.from_pretrained("openai/whisper-small")
@@ -53,6 +69,7 @@ whisper_model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-
 # Configure Google AI
 configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+logger.info("Starting image generation model")
 # Load image generation models
 torch.cuda.empty_cache()
 pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float16, variant="fp16", max_memory={0: "8GB", "cpu": "8GB"}).to(device)
@@ -60,6 +77,7 @@ pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 pipe.enable_model_cpu_offload()
 pipe.to("cpu")
 
+logger.info("Starting Coqui TTS model")
 # Load Coqui TTS model
 coqui_tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=False).to(device)
 
@@ -72,6 +90,7 @@ AVAILABLE_VOICES = ["alloy", "echo", "fable", "google", "onyx", "nova", "shimmer
 if USE_LOCAL_MODELS:
     AVAILABLE_VOICES.append("isabela")
 
+logger.info("Starting Flask app")
 @app.route('/generate-local-image', methods=['POST'])
 def generate_local_image():
     data = request.get_json()

@@ -9,8 +9,14 @@ services:
   #   environment:
   #     - OPENAI_API_KEY=${OPENAI_API_KEY}
   #     - GEMINI_API_KEY=${GEMINI_API_KEY}
+  #     - HUGGING_FACE_TOKEN=${HUGGING_FACE_TOKEN}
+  #     - COQUI_TOS_AGREED=1
   #   ports:
   #     - "5000:5000"
+  #   devices:
+  #     - /dev/nvidia0:/dev/nvidia0
+  #     - /dev/nvidiactl:/dev/nvidiactl
+  #     - /dev/nvidia-uvm:/dev/nvidia-uvm
 
   game-server:
     build:

@@ -8,6 +8,7 @@ import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebSettings
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +24,8 @@ import android.content.pm.PackageManager
 import androidx.annotation.RequiresApi
 import com.google.firebase.messaging.FirebaseMessaging
 import android.annotation.SuppressLint
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -61,7 +64,12 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
         progressBar = findViewById(R.id.progressBar)
 
-        webView.addJavascriptInterface(WebAppInterface(), "Android")
+        // Make sure WebView is visible
+        webView.visibility = View.VISIBLE
+        progressBar.visibility = View.VISIBLE
+
+        // Use the standalone WebAppInterface class instead of the inner class
+        webView.addJavascriptInterface(WebAppInterface(this), "Android")
         
         // Always set up normal webview - biometric auth will be handled by the web interface
         setupWebView()
@@ -83,34 +91,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    inner class WebAppInterface {
-        @JavascriptInterface
-        fun saveCredentials(username: String, password: String) {
-            runOnUiThread {
-                saveCredentialsToStorage(username, password)
-            }
-        }
-
-        @JavascriptInterface
-        fun isBiometricAvailable(): Boolean {
-            return PreferenceManager.getDefaultSharedPreferences(this@MainActivity)
-                .getBoolean("use_biometric", false) && hasStoredCredentials()
-        }
-
-        @JavascriptInterface
-        fun requestBiometricLogin() {
-            runOnUiThread {
-                setupBiometricAuth()
-            }
-        }
-
-        @JavascriptInterface
-        fun getFcmToken(): String {
-            // Return a dummy token or implement actual FCM token retrieval
-            return "dummy-fcm-token"
-        }
-    }
-
     private fun setupWebView() {
         webView.settings.apply {
             javaScriptEnabled = true
@@ -120,12 +100,41 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort = true
             allowFileAccess = true
             allowContentAccess = true
+            // Add these settings to improve WebView performance
+            setRenderPriority(WebSettings.RenderPriority.HIGH)
+            cacheMode = WebSettings.LOAD_DEFAULT
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            
+            // Add additional settings to help with debugging
+            loadsImagesAutomatically = true
+            javaScriptCanOpenWindowsAutomatically = true
+            setSupportMultipleWindows(true)
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
         }
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                Log.d("MainActivity", "Page finished loading: $url")
                 progressBar.visibility = View.GONE
+                webView.visibility = View.VISIBLE
+                
+                // Add JavaScript to check if the Android interface is available
+                webView.evaluateJavascript("""
+                    (function() {
+                        console.log("Android interface available: " + (window.Android !== undefined));
+                        if (window.Android) {
+                            console.log("Methods available: " + 
+                                "getFcmToken=" + (typeof window.Android.getFcmToken === 'function') + ", " +
+                                "isBiometricAvailable=" + (typeof window.Android.isBiometricAvailable === 'function') + ", " +
+                                "requestBiometricLogin=" + (typeof window.Android.requestBiometricLogin === 'function') + ", " +
+                                "saveCredentials=" + (typeof window.Android.saveCredentials === 'function')
+                            );
+                        }
+                    })();
+                """.trimIndent(), null)
                 
                 if (shouldAutoLogin && credentials != null) {
                     // Small delay to ensure page is fully loaded
@@ -138,9 +147,142 @@ class MainActivity : AppCompatActivity() {
                     injectFcmToken() // Inject token when page loads
                 }
             }
+            
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                super.onReceivedError(view, request, error)
+                Log.e("MainActivity", "WebView error: ${error?.description}")
+                // Show error to user
+                runOnUiThread {
+                    Toast.makeText(applicationContext, 
+                        "Error loading page: ${error?.description}", Toast.LENGTH_LONG).show()
+                    progressBar.visibility = View.GONE
+                }
+            }
+            
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                Log.d("MainActivity", "Loading URL: ${request?.url}")
+                return super.shouldOverrideUrlLoading(view, request)
+            }
         }
 
+        // Show progress bar before loading URL
+        progressBar.visibility = View.VISIBLE
+        
+        // Clear cache and cookies to ensure a fresh load
+        webView.clearCache(true)
+        webView.clearHistory()
+        
         webView.loadUrl("https://rpg.ftonon.uk/")
+    }
+
+    fun saveCredentialsToStorage(username: String, password: String) {
+        try {
+            val trimmedUsername = username.trim()
+            
+            val masterKey = MasterKey.Builder(applicationContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            val sharedPreferences = EncryptedSharedPreferences.create(
+                applicationContext,
+                "secret_shared_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+
+            sharedPreferences.edit().apply {
+                putString("username", trimmedUsername)
+                putString("password", password)
+                apply()
+            }
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error saving credentials: ${e.message}", e)
+            Toast.makeText(this, "Error saving credentials: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun hasStoredCredentials(): Boolean {
+        return try {
+            val (username, password) = getStoredCredentials()
+            username.isNotEmpty() && password.isNotEmpty()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error checking credentials: ${e.message}", e)
+            false
+        }
+    }
+
+    private fun getStoredCredentials(): Pair<String, String> {
+        try {
+            val masterKey = MasterKey.Builder(applicationContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            val sharedPreferences = EncryptedSharedPreferences.create(
+                applicationContext,
+                "secret_shared_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+
+            val username = sharedPreferences.getString("username", "") ?: ""
+            val password = sharedPreferences.getString("password", "") ?: ""
+            return Pair(username, password)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error getting stored credentials: ${e.message}", e)
+            throw e
+        }
+    }
+
+    fun setupBiometricAuth() {
+        val executor = ContextCompat.getMainExecutor(this)
+        val biometricPrompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    runOnUiThread {
+                        credentials = getStoredCredentials()
+                        shouldAutoLogin = true
+                        webView.visibility = View.VISIBLE
+                        setupWebView()
+                    }
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, 
+                            "Authentication error: $errString", Toast.LENGTH_SHORT).show()
+                        // Don't automatically show webView on error
+                        if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON || 
+                            errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                            webView.visibility = View.VISIBLE
+                            setupWebView()
+                        } else {
+                            // For other errors, retry biometric auth
+                            setupBiometricAuth()
+                        }
+                    }
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, 
+                            "Authentication failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Login to DaiRPG")
+            .setSubtitle("Use your fingerprint to login")
+            .setNegativeButtonText("Cancel")
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
     }
 
     private fun injectCredentialSaver() {
@@ -197,116 +339,6 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
         
         webView.evaluateJavascript(javascript, null)
-    }
-
-    private fun saveCredentialsToStorage(username: String, password: String) {
-        try {
-            val trimmedUsername = username.trim()
-            
-            val masterKey = MasterKey.Builder(applicationContext)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-
-            val sharedPreferences = EncryptedSharedPreferences.create(
-                applicationContext,
-                "secret_shared_prefs",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-
-            sharedPreferences.edit().apply {
-                putString("username", trimmedUsername)
-                putString("password", password)
-                apply()
-            }
-            
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error saving credentials: ${e.message}", e)
-            Toast.makeText(this, "Error saving credentials: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun hasStoredCredentials(): Boolean {
-        return try {
-            val (username, password) = getStoredCredentials()
-            username.isNotEmpty() && password.isNotEmpty()
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error checking credentials: ${e.message}", e)
-            false
-        }
-    }
-
-    private fun getStoredCredentials(): Pair<String, String> {
-        try {
-            val masterKey = MasterKey.Builder(applicationContext)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-
-            val sharedPreferences = EncryptedSharedPreferences.create(
-                applicationContext,
-                "secret_shared_prefs",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-
-            val username = sharedPreferences.getString("username", "") ?: ""
-            val password = sharedPreferences.getString("password", "") ?: ""
-            return Pair(username, password)
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error getting stored credentials: ${e.message}", e)
-            throw e
-        }
-    }
-
-    private fun setupBiometricAuth() {
-        val executor = ContextCompat.getMainExecutor(this)
-        val biometricPrompt = BiometricPrompt(this, executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    runOnUiThread {
-                        credentials = getStoredCredentials()
-                        shouldAutoLogin = true
-                        webView.visibility = View.VISIBLE
-                        setupWebView()
-                    }
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, 
-                            "Authentication error: $errString", Toast.LENGTH_SHORT).show()
-                        // Don't automatically show webView on error
-                        if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON || 
-                            errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
-                            webView.visibility = View.VISIBLE
-                            setupWebView()
-                        } else {
-                            // For other errors, retry biometric auth
-                            setupBiometricAuth()
-                        }
-                    }
-                }
-
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, 
-                            "Authentication failed", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            })
-
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Login to DaiRPG")
-            .setSubtitle("Use your fingerprint to login")
-            .setNegativeButtonText("Cancel")
-            .build()
-
-        biometricPrompt.authenticate(promptInfo)
     }
 
     private fun autoLogin(username: String, password: String) {

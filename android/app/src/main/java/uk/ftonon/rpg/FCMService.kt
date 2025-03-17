@@ -42,6 +42,8 @@ class FCMService : FirebaseMessagingService() {
     
     override fun onNewToken(token: String) {
         Log.d(TAG, "Refreshed token: $token")
+        MainActivity.fcmToken = token
+        MainActivity.updateWebViewWithToken()
         sendTokenToBackend(token)
     }
     

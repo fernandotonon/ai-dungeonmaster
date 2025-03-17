@@ -33,6 +33,25 @@ class WebAppInterface(private val context: Context) {
     }
 
     /**
+     * Save auth token for API calls
+     */
+    @JavascriptInterface
+    fun saveAuthToken(token: String) {
+        val sharedPrefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+        sharedPrefs.edit().putString("auth_token", token).apply()
+        Log.d("WebAppInterface", "Auth token saved")
+        
+        // If we have an FCM token, send it to the backend now
+        MainActivity.fcmToken?.let { fcmToken ->
+            if (context is MainActivity) {
+                context.runOnUiThread {
+                    context.injectFcmToken()
+                }
+            }
+        }
+    }
+
+    /**
      * Check if biometric authentication is available
      */
     @JavascriptInterface

@@ -468,6 +468,31 @@ class MainActivity : AppCompatActivity() {
                         // Call it immediately with current token
                         window.fcmTokenReceived('$token');
                     }
+                    
+                    // If user is logged in, send token to backend
+                    if (localStorage.getItem('token')) {
+                        const authToken = localStorage.getItem('token');
+                        console.log('Sending FCM token to backend with auth token');
+                        
+                        fetch('https://api-rpg.ftonon.uk/auth/update-notification-token', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': authToken
+                            },
+                            body: JSON.stringify({ notificationToken: token })
+                        })
+                        .then(response => {
+                            if (response.ok) {
+                                console.log('FCM token sent to backend successfully');
+                            } else {
+                                console.error('Failed to send FCM token to backend');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error sending FCM token to backend:', error);
+                        });
+                    }
                 })()
             """.trimIndent()
             

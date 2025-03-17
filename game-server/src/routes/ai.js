@@ -5,6 +5,7 @@ const verifyToken = require('../middleware/auth');
 const Game = require('../models/Game');
 const { storeFile, getFile, audioBucketName, imageBucketName } = require('../services/minioService');
 const multer = require('multer');
+const { notifyGameParticipants } = require('../services/notificationService');
 
 const router = express.Router();
 const upload = multer(); // In-memory storage
@@ -64,6 +65,20 @@ router.post('/story', verifyToken, async (req, res) => {
     game.storyMessages.push({ sender: game.aiRole, content: aiResponse });
 
     await game.save();
+    await notifyGameParticipants(
+      {
+        _id: game._id,
+        user: game.user,
+        players: game.players.filter(p => !p.userId.equals(req.user._id))
+      },
+      'New Message in Game',
+      `There's a new message in "${game.title}"`,
+      { 
+        type: 'new_message',
+        gameId: game._id.toString(),
+        sender: sender === 'DM' ? 'Player' : 'DM'
+      }
+    );
     res.json({ gameState: game });
   } catch (error) {
     console.error('Error updating story:', error);

@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, notificationToken } = req.body;
     const user = await User.findOne({ username });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -37,6 +37,13 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+    
+    // Save notification token if provided
+    if (notificationToken) {
+      user.notificationToken = notificationToken;
+      await user.save();
+    }
+    
     const token = jwt.sign({ _id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '1d' });
     
     // Set the token as an HTTP-only cookie
@@ -69,6 +76,30 @@ router.post('/logout', (req, res) => {
 
 router.get('/check', verifyToken, (req, res) => {
   res.json({ user: { userId: req.user._id, username: req.user.username } });
+});
+
+// Add a new endpoint to update notification token
+router.post('/update-notification-token', verifyToken, async (req, res) => {
+  try {
+    const { notificationToken } = req.body;
+    
+    if (!notificationToken) {
+      return res.status(400).json({ message: 'Notification token is required' });
+    }
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    user.notificationToken = notificationToken;
+    await user.save();
+    
+    res.json({ message: 'Notification token updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router;

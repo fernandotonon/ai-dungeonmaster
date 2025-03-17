@@ -29,7 +29,20 @@ api.interceptors.request.use(config => {
 export const auth = {
   register: (username, email, password) => api.post('/auth/register', { username, email, password }),
   login: async (username, password) => {
-    const response = await api.post('/auth/login', { username, password });
+    // Get FCM token from localStorage if available (set by Android WebView)
+    const notificationToken = localStorage.getItem('fcmToken');
+    
+    const response = await api.post('/auth/login', { 
+      username, 
+      password,
+      notificationToken 
+    });
+    
+    // If we're in Android WebView, save the auth token
+    if (window.Android && typeof window.Android.saveAuthToken === 'function') {
+      window.Android.saveAuthToken(response.data.user.token);
+    }
+    
     return response.data;
   },
   logout: () => api.post('/auth/logout'),
@@ -37,6 +50,9 @@ export const auth = {
     const response = await api.get('/auth/check');
     return response.data;
   },
+  updateNotificationToken: (notificationToken) => {
+    return api.post('/auth/update-notification-token', { notificationToken });
+  }
 };
 
 export const game = {

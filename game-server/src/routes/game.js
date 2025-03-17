@@ -7,6 +7,7 @@ const axios = require('axios');
 const { audioBucketName, imageBucketName, deleteFile } = require('../services/minioService');
 const { emitGameUpdate } = require('../services/socketService');
 const { sendInviteEmail } = require('../services/emailService');
+const { notifyGameParticipants } = require('../services/notificationService');
 
 router.get('/user-games', verifyToken, async (req, res) => {
   try {
@@ -149,6 +150,15 @@ router.post('/add-player', verifyToken, async (req, res) => {
 
     await game.save();
     emitGameUpdate(gameId, game);
+    
+    // Send notification to the added player
+    await notifyGameParticipants(
+      game, 
+      'New Game Invitation', 
+      `You have been added to the game "${game.title}"`,
+      { type: 'player_added' }
+    );
+    
     res.json({ gameState: game });
   } catch (error) {
     res.status(500).json({ error: 'Error adding player: ' + error });
@@ -208,6 +218,15 @@ router.post('/join-game', verifyToken, async (req, res) => {
 
     await game.save();
     emitGameUpdate(gameId, game);
+    
+    // Send notification to all players except the one joining
+    await notifyGameParticipants(
+      game, 
+      'New Player Joined', 
+      `${req.user.username} has joined the game "${game.title}"`,
+      { type: 'player_joined' }
+    );
+    
     res.json({ gameState: game });
   } catch (error) {
     res.status(500).json({ error: 'Error joining game' });
@@ -265,10 +284,37 @@ router.post('/remove-player', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Player not found' });
     }
 
+    // Get the player's username before removing
+    const playerToRemove = game.players.find(p => p.userId.toString() === userId);
+    const playerUsername = playerToRemove ? playerToRemove.username : 'A player';
+
     game.players = game.players.filter(p => p.userId.toString() !== userId);
     await game.save();
 
     emitGameUpdate(gameId, game);
+    
+    // Send notification to all remaining players
+    await notifyGameParticipants(
+      game, 
+      'Player Removed', 
+      `${playerUsername} has been removed from the game "${game.title}"`,
+      { type: 'player_removed' }
+    );
+    
+    // Also notify the removed player
+    if (playerToRemove) {
+      await notifyGameParticipants(
+        { 
+          _id: game._id, 
+          user: game.user,
+          players: [{ userId }] 
+        }, 
+        'Removed from Game', 
+        `You have been removed from the game "${game.title}"`,
+        { type: 'removed_from_game' }
+      );
+    }
+    
     res.json({ gameState: game });
   } catch (error) {
     res.status(500).json({ error: 'Error removing player' });

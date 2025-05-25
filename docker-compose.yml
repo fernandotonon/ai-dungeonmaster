@@ -43,6 +43,8 @@ services:
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/d-ai-rpg-firebase-adminsdk.json
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_REFERER=${OPENROUTER_REFERER}
     depends_on:
       # - ai-engine
       - mongodb      

@@ -6,6 +6,7 @@ const Game = require('../models/Game');
 const { storeFile, getFile, audioBucketName, imageBucketName } = require('../services/minioService');
 const multer = require('multer');
 const { notifyGameParticipants } = require('../services/notificationService');
+const openRouterService = require('../services/openrouterService');
 
 const router = express.Router();
 const upload = multer(); // In-memory storage
@@ -53,13 +54,14 @@ router.post('/story', verifyToken, async (req, res) => {
     const prompt = game.storyMessages.map(msg => `${msg.sender}: ${msg.content}`).join('\n');
     const aiPrompt = `${prompt}\n\nAs the ${game.aiRole}, respond to this:`;
     
-    const response = await axios.post('http://192.168.18.3:5000/generate', {
-      prompt: aiPrompt,
-      model: game.aiModel,
+    // Use OpenRouter service instead of ai-engine
+    let aiResponse = await openRouterService.generateResponse(
+      aiPrompt,
+      game.aiModel,
       isKidsMode,
-      language
-    });
-    let aiResponse = response.data.generated_text.trim();
+      language,
+      game.aiRole
+    );
     
     aiResponse = aiResponse.replace(/^(Player:|DM:|\*\*DM:\*\*)\s*/i, '');
     game.storyMessages.push({ sender: game.aiRole, content: aiResponse });
@@ -88,9 +90,9 @@ router.post('/story', verifyToken, async (req, res) => {
 
 router.get('/models', async (req, res) => {
   try {
-    const response = await axios.get('http://192.168.18.3:5000/models');
+    const models = openRouterService.getAvailableModels();
     res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-    res.json(response.data);
+    res.json({ models });
   } catch (error) {
     console.error('Error fetching AI models:', error);
     res.status(500).json({ error: 'An error occurred while fetching AI models' });

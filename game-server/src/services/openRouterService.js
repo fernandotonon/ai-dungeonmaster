@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-const generateResponse = async (prompt, model = 'openai/gpt-4o-mini', isKidsMode = false, language = '', aiRole = 'DM') => {
+const generateResponse = async (prompt, model = 'deepseek/deepseek-r1-0528:free', isKidsMode = false, language = '', aiRole = 'DM') => {
   try {
     let systemMessage = (
       "You are an adaptive RPG AI capable of playing both as a Dungeon Master and as a Player character. " +
@@ -10,10 +10,10 @@ const generateResponse = async (prompt, model = 'openai/gpt-4o-mini', isKidsMode
       "Keep your responses concise and relevant to the game context."
     );
 
-    if (aiRole === 'DM' && model !== 'meta-llama/llama-3.2-3b-instruct:free') {
+    if (aiRole === 'DM') {
       systemMessage += (
         "Respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)." +
-        "e.g. { 'role': 'Dungeon Master', 'content': 'Story content', 'options': ['Option 1', 'Option 2', ...] }."
+        "e.g. {\"role\": \"Dungeon Master\", \"content\": \"Story content\", \"options\": [\"Option 1\", \"Option 2\", ...]}."
       );
     }
 
@@ -38,7 +38,7 @@ const generateResponse = async (prompt, model = 'openai/gpt-4o-mini', isKidsMode
     const response = await axios.post(
       OPENROUTER_API_URL,
       {
-        model: model,
+        model,
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: prompt }
@@ -63,7 +63,7 @@ const generateResponse = async (prompt, model = 'openai/gpt-4o-mini', isKidsMode
       const safetyResponse = await axios.post(
         OPENROUTER_API_URL,
         {
-          model: 'openai/gpt-4o-mini',
+          model,
           messages: [
             { 
               role: 'system', 
@@ -102,9 +102,10 @@ const generateResponse = async (prompt, model = 'openai/gpt-4o-mini', isKidsMode
 
 // Model mapping for OpenRouter
 const MODEL_MAPPING = {
-  'gpt4o-mini': 'openai/gpt-4o-mini',
-  'gemini-pro': 'google/gemini-pro-1.5',
-  'llama': 'meta-llama/llama-3.2-3b-instruct:free'
+ // 'gpt4o-mini': 'openai/gpt-4o-mini',
+  'deepseek-r1': 'deepseek/deepseek-r1:free',
+  'gemma-3': 'google/gemma-3-27b-it:free',
+  'llama': 'meta-llama/llama-4-maverick:free'
 };
 
 const getAvailableModels = () => {

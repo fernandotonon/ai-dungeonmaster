@@ -20,6 +20,20 @@ import json
 # Set environment variable to accept TTS license agreement
 os.environ["COQUI_TOS_AGREED"] = "1"
 
+# Add safe globals for TTS model loading
+import torch.serialization
+from TTS.tts.configs.xtts_config import XttsConfig
+from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs
+from TTS.config.shared_configs import BaseDatasetConfig
+
+# Fallback if some classes are not available
+torch.serialization.add_safe_globals([
+    XttsConfig, 
+    XttsAudioConfig, 
+    BaseDatasetConfig, 
+    XttsArgs
+])
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

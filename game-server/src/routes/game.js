@@ -3,11 +3,11 @@ const verifyToken = require('../middleware/auth');
 const Game = require('../models/Game');
 const User = require('../models/User');
 const router = express.Router();
-const axios = require('axios');
 const { audioBucketName, imageBucketName, deleteFile } = require('../services/minioService');
 const { emitGameUpdate } = require('../services/socketService');
 const { sendInviteEmail } = require('../services/emailService');
 const { notifyGameParticipants } = require('../services/notificationService');
+const { generateResponse, getMappedModel } = require('../services/openRouterService');
 
 router.get('/user-games', verifyToken, async (req, res) => {
   try {
@@ -48,14 +48,9 @@ router.post('/init-game', verifyToken, async (req, res) => {
     });
     
     if(storyTheme) {
-      const response = await axios.post('http://192.168.18.3:5000/generate', {
-        prompt: `Your role is Dungeon Master. Start a story on the theme: ${storyTheme}.`,
-        model: gameState.aiModel,
-        isKidsMode,
-        language,
-        aiRole
-      });
-      let aiResponse = response.data.generated_text.trim();
+      // Use OpenRouter instead of ai-engine
+      const mappedModel = getMappedModel(aiModel);
+      let aiResponse = await generateResponse(`Your role is ${aiRole}. Start a story on the theme: ${storyTheme}.`, mappedModel, isKidsMode, language, aiRole);
       
       aiResponse = aiResponse.replace(/^(Player:|DM:|\*\*DM:\*\*)\s*/i, '');
       gameState.storyMessages.push({ sender: gameState.aiRole, content: aiResponse });

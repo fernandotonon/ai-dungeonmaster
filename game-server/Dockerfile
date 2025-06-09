@@ -2,6 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Create config directory for mounted files
+RUN mkdir -p /app/config
+
 # Copy package.json and package-lock.json (if available)
 COPY package*.json ./
 

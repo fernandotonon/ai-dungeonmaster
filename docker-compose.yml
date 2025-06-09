@@ -25,7 +25,7 @@ services:
     volumes:
       - ./game-server:/app
       - /app/node_modules
-      - ./d-ai-rpg-firebase-adminsdk.json:/app/d-ai-rpg-firebase-adminsdk.json
+      - ./d-ai-rpg-firebase-adminsdk.json:/app/config/d-ai-rpg-firebase-adminsdk.json
     command: sh -c "npm install --no-audit --no-fund && npm run dev"
     ports:
       - "3000:3000"
@@ -42,7 +42,9 @@ services:
       - GMAIL_USER=${GMAIL_USER}
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/d-ai-rpg-firebase-adminsdk.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/config/d-ai-rpg-firebase-adminsdk.json
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_REFERER=${OPENROUTER_REFERER}
     depends_on:
       # - ai-engine
       - mongodb      
@@ -68,17 +70,31 @@ services:
       - game-server
 
   cloudflared:
-    image: cloudflare/cloudflared
+    image: cloudflare/cloudflared:latest
     command: tunnel --config /etc/cloudflared/config.yml run
     volumes:
       - ./cloudflare-config.yml:/etc/cloudflared/config.yml:ro
       - ./cloudflare-tunnel-credentials.json:/etc/cloudflared/credentials.json:ro
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    restart: unless-stopped
     depends_on:
       - game-server
+      - frontend
     networks:
       - default
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/metrics || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
   mongodb:
     image: mongo:4.4.18

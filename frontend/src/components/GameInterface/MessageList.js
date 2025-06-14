@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import MessageItem from './MessageItem';
+import { Box, CircularProgress, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 const MessageList = ({ 
   gameState, 
@@ -10,8 +12,11 @@ const MessageList = ({
   handleGenerateImage, 
   handleImageClick,
   isGeneratingAudio,
-  isGeneratingImage
+  isGeneratingImage,
+  isAiProcessing
 }) => {
+  const { t } = useTranslation();
+
   const memoizedMessages = useMemo(() => {
     return gameState.storyMessages.slice().map((message, index) => (
       <MessageItem
@@ -32,7 +37,19 @@ const MessageList = ({
     ));
   }, [gameState, mediaUrls, loadingFiles, handleSubmitAction, handleGenerateAudio, handleGenerateImage, handleImageClick]);
 
-  return <>{memoizedMessages}</>;
+  return (
+    <>
+      {memoizedMessages}
+      {isAiProcessing && (
+        <Box display="flex" alignItems="center" justifyContent="center" gap={2} p={2}>
+          <CircularProgress size={24} />
+          <Typography variant="body2" color="textSecondary">
+            {t('ai_thinking')}
+          </Typography>
+        </Box>
+      )}
+    </>
+  );
 };
 
 export default MessageList;

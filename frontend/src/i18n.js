@@ -77,7 +77,8 @@ const resources = {
       invite: "Invite",
       online_players: "Online Players",
       server_down_message: "Server is currently unavailable. We're working on it!",
-      login_with_fingerprint: "Login with Fingerprint"
+      login_with_fingerprint: "Login with Fingerprint",
+      ai_thinking: "AI is thinking..."
     }
   },
   ptbr: {
@@ -154,7 +155,8 @@ const resources = {
       invite: "Convidar",
       online_players: "Jogadores Online",
       server_down_message: "O servidor está indisponível no momento. Estamos trabalhando nisso!",
-      login_with_fingerprint: "Login com Impressão Digital"
+      login_with_fingerprint: "Login com Impressão Digital",
+      ai_thinking: "IA está pensando..."
     }
   },
   es: {
@@ -231,7 +233,8 @@ const resources = {
       invite: "Invitar",
       online_players: "Jugadores en Línea",
       server_down_message: "El servidor está actualmente indisponible. Estamos trabajando en ello!",
-      login_with_fingerprint: "Iniciar sesión con huella digital"
+      login_with_fingerprint: "Iniciar sesión con huella digital",
+      ai_thinking: "La IA está pensando..."
     }
   },
   de: {
@@ -308,7 +311,8 @@ const resources = {
       invite: "Einladen",
       online_players: "Spieler Online",
       server_down_message: "Der Server ist derzeit nicht verfügbar. Wir arbeiten daran!",
-      login_with_fingerprint: "Anmelden mit Fingerabdruck"
+      login_with_fingerprint: "Anmelden mit Fingerabdruck",
+      ai_thinking: "KI denkt nach..."
     }
   },
   it: {
@@ -385,7 +389,8 @@ const resources = {
       invite: "Invita",
       online_players: "Giocatori Online",
       server_down_message: "Il server è attualmente indisponibile. Stiamo lavorando su questo!",
-      login_with_fingerprint: "Accedi con la tua impronta digitale"
+      login_with_fingerprint: "Accedi con la tua impronta digitale",
+      ai_thinking: "L'AI sta pensando..."
     }
   },
   fr: {
@@ -462,7 +467,8 @@ const resources = {
       invite: "Inviter",
       online_players: "Joueurs en Ligne",
       server_down_message: "Le serveur est actuellement indisponible. Nous y travaillons!",
-      login_with_fingerprint: "Se connecter avec votre empreinte digitale"
+      login_with_fingerprint: "Se connecter avec votre empreinte digitale",
+      ai_thinking: "L'IA réfléchit..."
     }
   }
   // Add translations for other languages here

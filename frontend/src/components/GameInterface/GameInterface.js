@@ -31,6 +31,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
   const [playerName, setPlayerName] = useState('');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [currentAudio, setCurrentAudio] = useState(null);  // To manage audio playback
   const { darkMode, toggleTheme } = useTheme();
   const { isKidsMode } = useKidsMode();
@@ -257,11 +258,30 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
 
   const handleSubmitAction = async (text) => {
     try {
+      // Update gameState immediately with user's message
+      const updatedGameState = {
+        ...gameState,
+        storyMessages: [...gameState.storyMessages, { 
+          sender: gameState.playerRole, 
+          content: text 
+        }]
+      };
+      setGameState(updatedGameState);
+
+      // Set AI processing state to true
+      setIsAiProcessing(true);
+
+      // Then make the API call to get AI response
       const response = await api.ai.submitStory(gameState._id, text, gameState.playerRole, isKidsMode, i18n.language);
+      
+      // Use the complete game state from the server
       setGameState(response.data.gameState);
     } catch (error) {
       console.error('Error submitting action:', error);
       setError('Failed to submit action. Please try again.');
+    } finally {
+      // Set AI processing state to false
+      setIsAiProcessing(false);
     }
   };
 
@@ -457,6 +477,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
                 handleSubmitAction={handleSubmitAction}
                 isGeneratingAudio={isGeneratingAudio}
                 isGeneratingImage={isGeneratingImage}
+                isAiProcessing={isAiProcessing}
               />
               <FullscreenImageViewer 
                 open={!!fullscreenImage} 
@@ -468,6 +489,7 @@ const GameInterface = ({ gameState, setGameState, onBackToGameList, setError, av
               onSubmit={handleSubmitAction} 
               setError={setError}
               gameState={gameState}
+              disabled={isAiProcessing}
             />
           </Box>
         </Box>

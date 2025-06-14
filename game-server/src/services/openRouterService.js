@@ -12,8 +12,8 @@ const generateResponse = async (prompt, model = 'deepseek/deepseek-r1-0528:free'
 
     if (aiRole === 'DM') {
       systemMessage += (
-        "Respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)." +
-        "e.g. {\"role\": \"Dungeon Master\", \"content\": \"Story content\", \"options\": [\"Option 1\", \"Option 2\", ...]}."
+        " Respond in JSON format, with the following keys: 'role', 'content', 'options' (for multiple choice questions or actions)." +
+        " e.g. {\"role\": \"Dungeon Master\", \"content\": \"Story content\", \"options\": [\"Option 1\", \"Option 2\", ...]}."
       );
     }
 
@@ -56,6 +56,10 @@ const generateResponse = async (prompt, model = 'deepseek/deepseek-r1-0528:free'
       }
     );
 
+    if (!response.data || !response.data.choices || !response.data.choices[0] || !response.data.choices[0].message) {
+      throw new Error('Invalid response from OpenRouter API');
+    }
+
     let generatedText = response.data.choices[0].message.content.trim();
 
     // Safety check for kids mode
@@ -87,6 +91,10 @@ const generateResponse = async (prompt, model = 'deepseek/deepseek-r1-0528:free'
         }
       );
 
+      if (!safetyResponse.data || !safetyResponse.data.choices || !safetyResponse.data.choices[0] || !safetyResponse.data.choices[0].message) {
+        throw new Error('Invalid response from OpenRouter API safety check');
+      }
+
       const safetyResponseText = safetyResponse.data.choices[0].message.content.trim();
       if (safetyResponseText.toLowerCase().includes('not suitable')) {
         generatedText = safetyResponseText.split('Modified version:').pop().trim();
@@ -102,7 +110,7 @@ const generateResponse = async (prompt, model = 'deepseek/deepseek-r1-0528:free'
 
 // Model mapping for OpenRouter
 const MODEL_MAPPING = {
- // 'gpt4o-mini': 'openai/gpt-4o-mini',
+  // 'gpt4o-mini': 'openai/gpt-4o-mini',
   'deepseek-r1': 'deepseek/deepseek-r1:free',
   'gemma-3': 'google/gemma-3-27b-it:free',
   'llama': 'meta-llama/llama-4-maverick:free'

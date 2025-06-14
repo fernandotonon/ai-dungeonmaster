@@ -48,7 +48,11 @@ router.post('/story', verifyToken, async (req, res) => {
     const game = await Game.findOne({ _id: gameId, user: req.user._id });
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
-    game.storyMessages.push({ sender, content: action });
+    // Add the user's message to the game state with sender
+    game.storyMessages.push({ 
+      sender: sender || game.playerRole, 
+      content: action 
+    });
     game.updatedAt = new Date();
 
     const prompt = game.storyMessages.map(msg => `${msg.sender}: ${msg.content}`).join('\n');
@@ -58,8 +62,36 @@ router.post('/story', verifyToken, async (req, res) => {
     const mappedModel = getMappedModel(game.aiModel);
     let aiResponse = await generateResponse(aiPrompt, mappedModel, isKidsMode, language, game.aiRole);
     
+    if (!aiResponse || aiResponse.trim() === '') {
+      throw new Error('Empty response from AI');
+    }
+
+    // Clean up the response
     aiResponse = aiResponse.replace(/^(Player:|DM:|\*\*DM:\*\*)\s*/i, '');
-    game.storyMessages.push({ sender: game.aiRole, content: aiResponse });
+    
+    let messageContent = aiResponse;
+    let messageOptions = null;
+
+    // Try to parse JSON response
+    try {
+      const jsonResponse = JSON.parse(aiResponse);
+      if (jsonResponse.content) {
+        messageContent = jsonResponse.content;
+      }
+      if (jsonResponse.options && Array.isArray(jsonResponse.options)) {
+        messageOptions = jsonResponse.options;
+      }
+    } catch (e) {
+      // If it's not valid JSON, use the response as is
+      console.log('Response is not JSON, using as plain text');
+    }
+
+    // Add AI response with sender and options
+    game.storyMessages.push({ 
+      sender: game.aiRole, 
+      content: messageContent,
+      options: messageOptions
+    });
 
     await game.save();
     await notifyGameParticipants(
@@ -79,7 +111,7 @@ router.post('/story', verifyToken, async (req, res) => {
     res.json({ gameState: game });
   } catch (error) {
     console.error('Error updating story:', error);
-    res.status(500).json({ error: 'Error updating story' });
+    res.status(500).json({ error: 'Error updating story: ' + error.message });
   }
 });
 

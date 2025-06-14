@@ -44,7 +44,8 @@ const MessageItem = ({
     padding: '10px',
   }));
 
-  const messageOptions = getMessageOptions(message.content);
+  // Use options directly from message object if available, otherwise try to parse from content
+  const messageOptions = message.options || getMessageOptions(message.content);
 
   return (
     <Message sender={message.sender} aiRole={gameState.aiRole}>
